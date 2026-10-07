@@ -1,0 +1,23 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Node (only if a tool is added later; the site itself needs none)
+node_modules/
+package-lock.json
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Local artifacts — the CSVs live on the cluster and are not published
+*.csv
+*.pth.tar
+*.pt

@@ -1,0 +1,283 @@
+{
+  "_comment": "Numeric series for the main-page visualisations. Inline this into the page as a JS object; do not fetch it at runtime. All values are exact as measured — do not round.",
+
+  "project_arc": {
+    "_for": "V1",
+    "steps": [
+      { "id": "goal",        "label": "Hypothesis",        "sub": "MIM auxiliaries + curriculum", "anchor": "#goal" },
+      { "id": "setup",       "label": "14 runs",           "sub": "7 arms × 2 datasets",          "anchor": "#setup" },
+      { "id": "turn",        "label": "Nothing worked",    "sub": "5 of 7 arms invalid",          "anchor": "#turn" },
+      { "id": "instrument",  "label": "Built a probe",     "sub": "position R² + rank",           "anchor": "#instrument" },
+      { "id": "failures",    "label": "Four mechanisms",   "sub": "each measured",                "anchor": "#failure-1" },
+      { "id": "correction",  "label": "Seed correction",   "sub": "±3.04 pp, not ±0.29",          "anchor": "#correction" },
+      { "id": "survivor",    "label": "One survivor",      "sub": "EMA, n = 1",                   "anchor": "#survivor" },
+      { "id": "decision",    "label": "Two paths",         "sub": "costed",                       "anchor": "#decision" }
+    ]
+  },
+
+  "experiment_matrix": {
+    "_for": "V2",
+    "_note": "status drives cell colour: valid | unexplained | invalid",
+    "datasets": ["CIFAR-10", "STL-10"],
+    "arms": [
+      {
+        "id": "vanilla", "label": "vanilla", "adds": "baseline, unmodified",
+        "status": "valid",
+        "reason": "Healthy to epoch 200, then degrades — see failure mode 3",
+        "loss": { "CIFAR-10": 0.169, "STL-10": 0.179 },
+        "peak_lp": { "CIFAR-10": 68.50, "STL-10": 77.14 }
+      },
+      {
+        "id": "rp", "label": "rp", "adds": "rotation prediction",
+        "status": "unexplained",
+        "reason": "Only accuracy gain, but +2.27 pp is 0.59σ against seed noise — dissolves",
+        "loss": { "CIFAR-10": 0.108, "STL-10": 0.135 },
+        "peak_lp": { "CIFAR-10": 70.77, "STL-10": 79.34 }
+      },
+      {
+        "id": "rppp", "label": "rppp", "adds": "relative patch position",
+        "status": "invalid",
+        "reason": "Positional shortcut — encoder collapses to a position lookup within 26 epochs of the auxiliary activating",
+        "loss": { "CIFAR-10": 0.000, "STL-10": 0.003 },
+        "peak_lp": { "CIFAR-10": 53.48, "STL-10": 65.84 }
+      },
+      {
+        "id": "multitask", "label": "multitask", "adds": "rotation + relative position",
+        "status": "invalid",
+        "reason": "Inherits rppp's collapse",
+        "loss": { "CIFAR-10": 0.038, "STL-10": 0.047 },
+        "peak_lp": { "CIFAR-10": null, "STL-10": null }
+      },
+      {
+        "id": "uc", "label": "uc", "adds": "uncertainty curriculum",
+        "status": "invalid",
+        "reason": "40–60% of prediction targets leaked to the encoder; also never evaluated due to a path bug",
+        "loss": { "CIFAR-10": 0.019, "STL-10": 0.050 },
+        "peak_lp": { "CIFAR-10": null, "STL-10": null }
+      },
+      {
+        "id": "hc", "label": "hc", "adds": "hardness curriculum",
+        "status": "invalid",
+        "reason": "Same leak; and the hardness score is a fixed spatial prior, identical for every image",
+        "loss": { "CIFAR-10": 0.021, "STL-10": 0.050 },
+        "peak_lp": { "CIFAR-10": 62.02, "STL-10": 66.84 }
+      },
+      {
+        "id": "mtuc", "label": "mtuc", "adds": "multitask + uncertainty curriculum",
+        "status": "invalid",
+        "reason": "Both failure modes; also never evaluated",
+        "loss": { "CIFAR-10": 0.020, "STL-10": 0.030 },
+        "peak_lp": { "CIFAR-10": null, "STL-10": null }
+      }
+    ]
+  },
+
+  "baseline_signature": {
+    "_for": "V3",
+    "_caption": "CIFAR-10 vanilla. Position readout falls while effective rank rises — the signature of healthy training.",
+    "epochs": [30, 66, 400],
+    "cifar": {
+      "position_r2": [0.989, 0.981, 0.889],
+      "token_rank": [119, 208, 334],
+      "token_norm": [19.7, 19.9, 21.4]
+    },
+    "stl": {
+      "position_r2": [0.974, 0.954, 0.806],
+      "token_rank": [222, 278, 334],
+      "token_norm": [19.6, 20.0, 23.2]
+    },
+    "random_init_control": { "position_r2": 0.9999981, "token_rank": 21.0 },
+    "max_rank": 384
+  },
+
+  "positional_shortcut": {
+    "_for": "V4",
+    "_caption": "Token-level effective rank. The auxiliary objective activates at epoch 40.",
+    "aux_activation_epoch": 40,
+    "cifar": {
+      "epochs": [30, 66, 300],
+      "vanilla_rank": [119, 208, 334],
+      "rppp_rank": [117, 9.2, 5.9],
+      "vanilla_r2": [0.989, 0.981, 0.889],
+      "rppp_r2": [0.991, 0.9999, 1.0000],
+      "rppp_token_norm": [19.7, 28.7, 39.5],
+      "vanilla_lp": [53.46, 63.64, 65.58],
+      "rppp_lp": [53.48, 28.81, 23.42]
+    },
+    "stl": {
+      "epochs": [30, 66, 400],
+      "vanilla_rank": [222, 278, 334],
+      "rppp_rank": [221, 23.5, 17.2],
+      "vanilla_r2": [0.974, 0.954, 0.806],
+      "rppp_r2": [0.975, 0.9991, 1.0000],
+      "rppp_lp": [65.84, 28.84, 29.45]
+    }
+  },
+
+  "mask_leak": {
+    "_for": "V5",
+    "_caption": "Measured over 45,600 per-image samples. Vanilla's overlap is exactly zero.",
+    "_note": "Render as a 16x16 grid for CIFAR. Use the counts to place context / target / overlap cells; exact positions are arbitrary, the proportions are the point.",
+    "cifar": {
+      "grid": [16, 16],
+      "total_patches": 256,
+      "states": [
+        { "id": "vanilla",   "label": "Vanilla I-JEPA",     "n_ctx": 76.7,  "ctx_range": [41, 106], "n_tgt": 115.0, "n_overlap": 0,    "frac_leaked": 0.0   },
+        { "id": "easy",      "label": "Curriculum — easy",  "n_ctx": 102.0, "ctx_range": null,      "n_tgt": 115.3, "n_overlap": 46.0, "frac_leaked": 0.399 },
+        { "id": "hard",      "label": "Curriculum — hard",  "n_ctx": 153.0, "ctx_range": null,      "n_tgt": 114.9, "n_overlap": 68.6, "frac_leaked": 0.597 }
+      ]
+    },
+    "stl": {
+      "grid": [12, 12],
+      "total_patches": 144,
+      "states": [
+        { "id": "vanilla", "label": "Vanilla I-JEPA",    "n_ctx": 39.2, "ctx_range": [19, 55], "n_tgt": 63.6, "n_overlap": 0,    "frac_leaked": 0.0   },
+        { "id": "easy",    "label": "Curriculum — easy", "n_ctx": 57.0, "ctx_range": null,     "n_tgt": 63.5, "n_overlap": 25.2, "frac_leaked": 0.396 },
+        { "id": "hard",    "label": "Curriculum — hard", "n_ctx": 86.0, "ctx_range": null,     "n_tgt": 63.6, "n_overlap": 38.0, "frac_leaked": 0.597 }
+      ]
+    },
+    "uniform_law": {
+      "_note": "Expected leak = num_keep x |targets| / N. Four for four, within 0.1 of a patch.",
+      "rows": [
+        { "config": "CIFAR easy", "predicted": 45.94, "measured": 46.0 },
+        { "config": "CIFAR hard", "predicted": 68.67, "measured": 68.6 },
+        { "config": "STL easy",   "predicted": 25.14, "measured": 25.2 },
+        { "config": "STL hard",   "predicted": 37.98, "measured": 38.0 }
+      ]
+    }
+  },
+
+  "freeze_test": {
+    "_for": "V6",
+    "_caption": "Linear probe accuracy vs epoch, CIFAR-10. Frozen runs go flat and stay flat.",
+    "epochs": [30, 66, 100, 150, 200, 300, 400],
+    "series": [
+      { "id": "vanilla",   "label": "vanilla",      "colour": "accent",  "values": [53.46, 63.64, 67.19, 68.40, 68.50, 65.58, 64.93], "delta": -3.57 },
+      { "id": "freeze200", "label": "freeze @ 200",  "colour": "proven",  "values": [50.55, 62.47, 67.34, 69.69, 70.33, 69.99, 70.32], "delta": -0.01, "freeze_at": 200 },
+      { "id": "freeze150", "label": "freeze @ 150",  "colour": "proven",  "values": [51.17, 63.03, 66.87, 69.18, 69.41, 69.69, 69.58], "delta": 0.40,  "freeze_at": 150 }
+    ]
+  },
+
+  "seed_variance": {
+    "_for": "V7 — the shaded band",
+    "_caption": "Three genuine seeds of the baseline. Seed 2 shows essentially no decline.",
+    "seeds": [
+      { "seed": 0, "peak": 68.50, "peak_epoch": 200, "ep400": 64.93, "decline": -3.57 },
+      { "seed": 2, "peak": 66.20, "peak_epoch": 350, "ep400": 66.08, "decline": -0.12 },
+      { "seed": 3, "peak": 72.22, "peak_epoch": 200, "ep400": 68.55, "decline": -3.67 }
+    ],
+    "peak_mean": 68.97,
+    "peak_std": 3.04,
+    "ep400_mean": 66.52,
+    "ep400_std": 1.85,
+    "decline_mean": -2.45,
+    "decline_std": 2.02,
+    "previously_reported_std": 0.29
+  },
+
+  "ema_survivor": {
+    "_for": "V7 — the overlaid curve",
+    "_caption": "EMA momentum held constant at 0.999 from epoch 0. Single run, unreplicated.",
+    "epochs": [30, 66, 100, 150, 200, 250, 300, 350, 400],
+    "emaconst_high": [58.44, 67.45, 73.57, 77.10, 78.16, 77.16, 76.55, 75.64, 75.16],
+    "vanilla":       [53.46, 63.64, 67.19, 68.40, 68.50, null, 65.58, null, 64.93],
+    "peak": 78.16,
+    "peak_epoch": 200,
+    "ep400": 75.16,
+    "sigma_at_peak": 3.0,
+    "sigma_at_ep400": 4.7,
+    "replication_status": "n = 1, unreplicated",
+    "other_ema_variants_ep400_range": [66.3, 66.5]
+  },
+
+  "labelfree_metrics": {
+    "_for": "optional inline table in section 8",
+    "_caption": "Mean absolute error, in epochs, between each metric's peak and the linear probe's peak.",
+    "rows": [
+      { "metric": "mean token norm", "mae_epochs": 89.1 },
+      { "metric": "training loss",   "mae_epochs": 106.0 },
+      { "metric": "entropy rank",    "mae_epochs": 111.6 },
+      { "metric": "stable rank",     "mae_epochs": 122.5 },
+      { "metric": "RankMe (token)",  "mae_epochs": 125.2 },
+      { "metric": "held-out loss",   "mae_epochs": 166.7 }
+    ],
+    "counterexamples": 53,
+    "pooled_spearman_stable_rank": 0.363
+  },
+
+  "heldout_loss": {
+    "_for": "optional inline table in section 7",
+    "_caption": "van_baseline, CIFAR-10. Both fall; the gap widens to ep300 then plateaus.",
+    "epochs": [100, 200, 300, 400],
+    "train": [0.1811, 0.1887, 0.1672, 0.1429],
+    "heldout": [0.1855, 0.2009, 0.1827, 0.1582],
+    "gap_pct": [0.44, 1.22, 1.54, 1.53]
+  },
+
+  "ledger": {
+    "_for": "section 11 — three columns",
+    "proven": [
+      "The diagnostic instrument, with a passing positive control",
+      "The positional shortcut — causal, both datasets, within-run before/after contrast",
+      "Mask leakage — an exact quantitative law over 45,600 measurements",
+      "The optimiser drives the post-peak decline — freeze test, −0.01 pp",
+      "Four alternative explanations for that decline, each eliminated by measurement",
+      "Label-free metrics miss the peak by roughly 100 epochs",
+      "RotNet-only is 8.82 pp below I-JEPA+RP across three seeds",
+      "Per-patch prediction error is heteroscedastic and content-driven, not positional"
+    ],
+    "not_proven": [
+      "Any accuracy improvement from the original UARPT design",
+      "Rotation prediction's advantage — 0.59σ, inside seed noise",
+      "That the late-training decline is universal — one of three seeds is flat",
+      "The EMA result — n = 1, no replication",
+      "That any of this transfers to STL-10 at matched settings — the STL baseline run is invalid",
+      "That removing the positional shortcut rescues the auxiliary objective",
+      "Anything at ImageNet scale — entirely untested"
+    ],
+    "abandoned": [
+      "The curriculum as originally designed — target-side percentile selection; never ran",
+      "Uncertainty-weighted latent prediction (β-NLL) — gate measured and open, method never built",
+      "The adversarial fix for the positional shortcut — designed, never implemented",
+      "Predictor capacity — 1:1 width where the reference has a 3.3× bottleneck; never swept",
+      "Mask geometry — ImageNet defaults never re-tuned for a 16×16 grid of 2×2-pixel patches",
+      "Anti-collapse regularisation — LeJEPA / SIGReg is the obvious baseline; never run"
+    ]
+  },
+
+  "paths": {
+    "_for": "section 12",
+    "A": {
+      "title": "Diagnostic paper",
+      "subtitle": "Failure modes of I-JEPA on small data",
+      "runs": 9,
+      "gpu_hours": 430,
+      "experiment_time": "~1 week",
+      "to_draft": "~6 weeks",
+      "risk": "low",
+      "phases": [
+        { "n": 1, "label": "Analysis only",                     "detail": "Position readout on existing checkpoints; extend the label-free table; re-score against the noise floor", "cost": "0 GPU-h",             "when": "Week 1" },
+        { "n": 2, "label": "Seed replication",                  "detail": "rppp ×2, hc_fixed ×2, freeze200 ×2 — brings failure modes 1–3 to n = 3",                                "cost": "6 runs · ~250 GPU-h", "when": "Week 1–2" },
+        { "n": 3, "label": "STL-10 generalisation",             "detail": "Freeze test on STL ×1; valid multi-GPU STL baseline ×2 seeds",                                           "cost": "3 runs · ~180 GPU-h", "when": "Week 2–3" },
+        { "n": 4, "label": "Figures and drafting",              "detail": "All figure data already exists",                                                                         "cost": "0 GPU-h",             "when": "Week 3–6" }
+      ]
+    },
+    "B": {
+      "title": "Method paper",
+      "subtitle": "A stable EMA target improves I-JEPA on small data",
+      "runs": 35,
+      "gpu_hours": 4500,
+      "experiment_time": "~3 months",
+      "to_draft": "~4 months",
+      "risk": "moderate",
+      "phases": [
+        { "n": 1, "label": "The gate — replicate at 3 seeds",   "detail": "If it does not clear ±3.04 pp, stop and revert to path A",                        "cost": "3 runs · ~130 GPU-h",   "when": "Week 1",     "gate": true },
+        { "n": 2, "label": "Dose-response and mechanism",       "detail": "Constant momentum 0.998 / 0.9985 / 0.999 / 0.9995 / 0.9999 ×2 seeds; schedule-length interaction", "cost": "12 runs · ~500 GPU-h",  "when": "Week 2–3" },
+        { "n": 3, "label": "STL-10 confirmation",               "detail": "emaconst_high ×3 seeds plus a matched multi-GPU baseline ×3 seeds",              "cost": "6 runs · ~360 GPU-h",   "when": "Week 3–5" },
+        { "n": 4, "label": "ImageNet-100 — the scale claim",    "detail": "ViT-S/16, 300 epochs, baseline and emaconst_high ×2 seeds. Dominates cost and risk", "cost": "4 runs · ~3,500 GPU-h", "when": "Week 5–12" },
+        { "n": 5, "label": "Ablations and transfer",            "detail": "Batch-size interaction; transfer-suite probes; comparison against LeJEPA/SIGReg",  "cost": "~10 runs · ~400 GPU-h", "when": "Week 10–14" },
+        { "n": 6, "label": "Figures and drafting",              "detail": "Path A's diagnostics become the mechanism section",                               "cost": "0 GPU-h",               "when": "Week 13–18" }
+      ]
+    }
+  }
+}
