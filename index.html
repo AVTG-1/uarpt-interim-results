@@ -1,0 +1,760 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>UARPT interim results</title>
+<meta name="description" content="Interim results from a project on I-JEPA in the small-image regime: four characterised failure modes, one unreplicated lead, and what each measurement showed. A project by Aryan Verma.">
+<link rel="stylesheet" href="assets/style.css">
+<script>document.documentElement.classList.add('js');</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="topbar-in">
+    <a class="brand" href="index.html">UARPT<small>interim results</small></a>
+    <nav class="navlinks" aria-label="Pages">
+      <a href="index.html" aria-current="page">Story</a>
+      <a href="technical.html">Appendix</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+
+<!-- ================= HERO ================= -->
+<section class="hero" aria-labelledby="title">
+  <div class="col">
+    <p class="eyebrow">Interim results &middot; October 2026</p>
+    <h1 id="title">UARPT &mdash; what the project actually found</h1>
+    <p class="lede">Six upgrades to I-JEPA, tested against an unmodified baseline. Zero improvements that clear seed noise. Four characterised failure modes, one unreplicated lead, and the measurements that established each of them.</p>
+    <p class="byline">A project by Aryan Verma</p>
+    <p class="meta"><span>14-run original sweep</span><span>~444 GPU-hours in total</span><span>9 rounds of audit</span><span>CIFAR-10 and STL-10</span></p>
+  </div>
+</section>
+
+<!-- ================= V1 PROJECT ARC ================= -->
+<section class="sec" id="arc" aria-labelledby="arc-t" style="margin-top:2.5rem">
+  <div class="col">
+    <figure class="fig wide" style="margin:0">
+      <div class="fig-title" id="arc-t">The shape of the project, in eight steps</div>
+      <ol class="arc" id="v1-arc" aria-label="Project arc; each step links to its section"></ol>
+      <noscript><p class="figcap">The interactive figures on this page need JavaScript. The text and tables carry the same argument.</p></noscript>
+      <p class="figcap" data-chart-fallback hidden>The interactive figures could not load (they need JavaScript and the D3 library from a CDN). The text and tables carry the same argument.</p>
+      <figcaption class="figcap">Select a step to jump to it. From the hypothesis to the decision, with each step tied to the section that supports it.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ================= 1. THE GOAL ================= -->
+<section class="sec" id="goal" aria-labelledby="goal-h">
+  <div class="col">
+    <div class="sec-head"><span class="num">1</span><h2 id="goal-h">The goal</h2></div>
+    <p><a class="term" href="technical.html#term-i-jepa">I-JEPA</a> (Assran et al., CVPR 2023) learns image representations without labels by predicting the <em>representation</em> of hidden image patches from visible ones, rather than predicting pixels. It works well at scale. On small datasets it is weaker, and the reasons are not well characterised.</p>
+    <p>The project&rsquo;s hypothesis was that <strong>borrowing auxiliary objectives from masked image modelling &mdash; rotation prediction, relative patch position prediction &mdash; and adding a difficulty curriculum would improve I-JEPA in the small-image regime.</strong></p>
+    <p>Small images were originally a compute constraint. The direction outlasted the constraint: the work is about Vision Transformers on small datasets as a setting in its own right, where I-JEPA is known to underperform and where nobody had looked closely at why.</p>
+  </div>
+</section>
+
+<!-- ================= 2. THE SETUP ================= -->
+<section class="sec" id="setup" aria-labelledby="setup-h">
+  <div class="col">
+    <div class="sec-head"><span class="num">2</span><h2 id="setup-h">The setup</h2></div>
+    <p>Seven configurations, two datasets, 400 epochs each. Fourteen runs, 84 milestone checkpoints.</p>
+    <div class="tablewrap" tabindex="0"><table class="tbl">
+      <thead><tr><th scope="col">Arm</th><th scope="col">What it adds</th></tr></thead>
+      <tbody>
+        <tr><td class="m"><code>vanilla</code></td><td>I-JEPA baseline, unmodified</td></tr>
+        <tr><td class="m"><code>rp</code></td><td>+ rotation prediction</td></tr>
+        <tr><td class="m"><code>rppp</code></td><td>+ relative patch position prediction</td></tr>
+        <tr><td class="m"><code>multitask</code></td><td>+ both</td></tr>
+        <tr><td class="m"><code>uc</code></td><td>+ uncertainty-driven curriculum masking</td></tr>
+        <tr><td class="m"><code>hc</code></td><td>+ hardness-driven curriculum masking</td></tr>
+        <tr><td class="m"><code>mtuc</code></td><td>+ both auxiliaries and the uncertainty curriculum</td></tr>
+      </tbody>
+    </table></div>
+    <p><strong>CIFAR-10</strong> at 32px with ViT-S/2 &rarr; a 16&times;16 grid of 256 patches. <strong>STL-10</strong> at 96px with ViT-S/8 &rarr; a 12&times;12 grid of 144 patches. Both use a 384-dimensional embedding. Auxiliary objectives activate at epoch 40, after warmup. <a href="technical.html#configuration">Configuration, appendix &sect;1</a></p>
+
+    <figure class="fig" id="v2" aria-labelledby="v2-t">
+      <div class="fig-title" id="v2-t">Which arms are valid method comparisons</div>
+      <div class="mkey" aria-hidden="true">
+        <span><span class="chip valid">valid</span> a usable comparison</span>
+        <span><span class="chip unexplained">unexplained</span> valid run, gain unexplained</span>
+        <span><span class="chip invalid">invalid</span> measures something other than the method</span>
+      </div>
+      <div class="matrix" id="v2-matrix"></div>
+      <div class="mdetail" id="v2-detail" aria-live="polite"><span class="dim">Hover, focus or tap a cell to see why it has its status.</span></div>
+      <figcaption class="figcap">Seven arms on two datasets, coloured and labelled by validity; five of seven arms are struck out. Both datasets, final JEPA loss and best measured linear probe. Missing linear probe values were never evaluated or never collected, and are not interpolated. <a href="technical.html#results-tables">Complete tables, appendix &sect;4.1</a></figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ================= 3. THE TURN ================= -->
+<section class="sec" id="turn" aria-labelledby="turn-h">
+  <div class="col">
+    <div class="sec-head"><span class="num">3</span><h2 id="turn-h">The turn</h2></div>
+    <p>Nothing improved on the baseline. But the failures were not noise &mdash; each one had a mechanism that could be measured, reproduced, and in two cases stated as an exact quantitative law.</p>
+    <p>That is what made the project worth continuing, and it is what this page is about.</p>
+    <p>Five of the seven arms turned out to be <strong>invalid as method comparisons</strong> &mdash; not merely unsuccessful, but measuring something other than what they claimed to measure. One arm produced a gain that later dissolved. And the baseline itself turned out to have a problem nobody had been looking for.</p>
+    <aside class="callout" aria-label="Correction">
+      <p class="label">Correction</p>
+      <p>Two of the project&rsquo;s own tables were wrong. The CIFAR-10 final-loss table was wrong in five of seven rows, a transcription failure at summary-writing time. A later milestone table contained 11 fabricated entries against the canonical evaluation files. The corrected values are the ones used on this page.</p>
+      <p><a href="technical.html#data-integrity">Data-integrity corrections, appendix &sect;3.5</a></p>
+    </aside>
+  </div>
+</section>
+
+<!-- ================= 4. THE INSTRUMENT ================= -->
+<section class="sec" id="instrument" aria-labelledby="instrument-h">
+  <div class="col">
+    <div class="sec-head"><span class="num">4</span><h2 id="instrument-h">The instrument</h2></div>
+    <p>Before you can say an upgrade broke something, you need a way to see what the encoder is doing. The project built one, and it is the most reusable thing it produced.</p>
+    <p><strong>Two numbers, computable on any checkpoint, with no labels.</strong></p>
+    <p><strong>Position readout R&sup2;.</strong> Fit a ridge regression from each individual patch token to its own coordinate on the image grid, training and testing on disjoint sets of images. It answers: <em>how much of this representation is still just location?</em> <a class="term" href="technical.html#term-position-readout-r2">Glossary</a></p>
+    <p><strong>Effective rank (<a class="term" href="technical.html#term-rankme">RankMe</a>).</strong> The entropy of the singular-value spectrum of the patch token matrix. It answers: <em>how many of the 384 available dimensions is the encoder actually using?</em></p>
+
+    <div class="stats">
+      <div class="stat"><div class="v">0.9999981</div><div class="l">Position readout R&sup2; of an untrained, randomly initialised ViT. The <a class="term" href="technical.html#term-control">control</a> that makes every other number on this probe readable.</div></div>
+    </div>
+
+    <p><strong>Why this works, and the control that makes it trustworthy.</strong> In a Vision Transformer, <a class="term" href="technical.html#term-positional-embedding">positional embeddings</a> are <em>added to the patches at the input</em>. Position is handed to the network for free. An untrained, randomly initialised ViT scores <strong>R&sup2; = 0.9999981</strong> on this probe &mdash; essentially perfect. So the question is never whether the encoder knows where patches are. It is what training does with that.</p>
+    <p>That control is load-bearing. Three separate measurement harnesses in this project produced mathematically impossible values &mdash; negative R&sup2; from a regression that cannot go below zero, a cosine similarity above 1 &mdash; and the control is what caught them. <a href="technical.html#diagnostic-protocol">Protocol and control, appendix &sect;2.1</a></p>
+    <p><strong>What healthy training looks like:</strong> position readout falls while effective rank rises, monotonically and together. On CIFAR-10 the baseline goes from R&sup2; 0.989 at epoch 30 to 0.889 at epoch 400, while rank climbs 119 &rarr; 334 of 384. STL-10 shows the same shape: 0.974 &rarr; 0.806, rank 222 &rarr; 334.</p>
+    <p>The encoder starts by passing position straight through, then spends training overwriting it with content.</p>
+
+    <figure class="fig wide bleed" id="v3" aria-labelledby="v3-t">
+      <div class="fig-title" id="v3-t">Healthy training: position falls out, dimensions come in</div>
+      <div class="chart-scroll" id="v3-chart"></div>
+      <figcaption class="figcap">CIFAR-10 vanilla, at three milestones (not to scale), with the random-initialisation control at left. STL-10 shows the same shape (values in the text above). <a href="technical.html#diagnostic-protocol">Appendix &sect;2.1</a></figcaption>
+    </figure>
+
+    <p>The first failure below inverts both halves of this signature. The third inverts neither, and that is what makes it interesting: the instrument does not detect it. <a href="technical.html#failure-divergence">Appendix &sect;4.5</a></p>
+  </div>
+</section>
+
+<!-- ================= 5. FAILURE 1 ================= -->
+<section class="sec" id="failure-1" aria-labelledby="failure-1-h">
+  <div class="col">
+    <div class="sec-head"><span class="num">5</span><h2 id="failure-1-h">Failure 1 &mdash; the positional shortcut</h2><span class="chip proven">Proven</span></div>
+
+    <div class="evidence">
+      <div><span class="k">Claim</span><span class="claim">The relative-patch-position head can be solved by reading back the encoder&rsquo;s own position code, so the encoder is rewarded for keeping position and discarding content.</span></div>
+      <div><span class="k">Measurement</span>Before and after the auxiliary switches on at epoch 40, within one run: effective rank 117 &rarr; 9.2 &rarr; 5.9, linear probe 53.48% &rarr; 28.81% &rarr; 23.42%, CIFAR-10.</div>
+      <div class="rep"><span class="k">Replication</span>One seed per arm (n = 1). Two further seeds of rppp are the first task of path A.</div>
+      <div class="link"><a href="technical.html#failure-positional">Evidence, appendix &sect;4.2</a></div>
+    </div>
+
+    <p><strong>The mechanism.</strong> The relative-patch-position head consumes the encoder&rsquo;s <em>output</em> tokens. Those tokens still carry the positional embedding that was added at the input. So predicting the offset between two patches is solvable by reading back the encoder&rsquo;s own position code &mdash; a near-linear operation requiring no understanding of image content whatsoever.</p>
+    <p>The gradient then rewards the encoder for <em>preserving and amplifying</em> position and suppressing everything else.</p>
+    <p><strong>How it was proven.</strong> The auxiliary objective activates at epoch 40, which gives a before/after contrast inside a single training run &mdash; no cross-run comparison needed.</p>
+
+    <div class="tablewrap" tabindex="0"><table class="tbl">
+      <thead><tr><th scope="col">CIFAR-10</th><th scope="col" class="n">ep30 (before)</th><th scope="col" class="n">ep66 (after)</th><th scope="col" class="n">ep300</th></tr></thead>
+      <tbody>
+        <tr><td>vanilla &mdash; R&sup2; / rank</td><td class="n">0.989 / 119</td><td class="n">0.981 / 208</td><td class="n">0.889 / 334</td></tr>
+        <tr><td>rppp &mdash; R&sup2; / rank</td><td class="n"><strong>0.991 / 117</strong></td><td class="n">0.9999 / 9.2</td><td class="n"><strong>1.0000 / 5.9</strong></td></tr>
+      </tbody>
+    </table></div>
+
+    <p>At epoch 30 the two runs are statistically indistinguishable. Within 26 epochs of the auxiliary switching on, position readout is <strong>0.9999</strong> and the encoder has collapsed from 117 usable dimensions to <strong>9.2</strong>; by epoch 300 the readout is <strong>1.0000</strong> and the rank <strong>5.9</strong> &mdash; roughly what a two-dimensional sinusoidal position code occupies. Token norms <em>rise</em> over the same period (19.7 &rarr; 28.7 &rarr; 39.5), so the encoder is amplifying that low-rank positional subspace, not merely shrinking.</p>
+    <p>Linear probe accuracy follows exactly: <strong>53.48% &rarr; 28.81% &rarr; 23.42%</strong>. Both datasets show the same pattern. <a href="technical.html#failure-positional">Appendix &sect;4.2</a></p>
+
+    <figure class="fig wide bleed" id="v4" aria-labelledby="v4-t">
+      <div class="fig-title" id="v4-t">Identical before epoch 40, far apart after</div>
+      <div class="controls"><span class="lab">Dataset</span></div>
+      <div class="chart-scroll" id="v4-chart"></div>
+      <figcaption class="figcap">Token-level effective rank of vanilla and rppp, <span data-cap-ds>CIFAR-10</span> (switch above). Milestones are not to scale; the last pair is <span data-cap-last>ep300</span>. Vanilla&rsquo;s last CIFAR-10 values (0.889 / 334) are reported at epoch 400 in the instrument chart and at epoch 300 here; the source files disagree and the label is unresolved (<a href="technical.html#positional-evidence">appendix &sect;4.2.2</a>).</figcaption>
+    </figure>
+
+    <p><strong>The fix we tried, and why it failed.</strong> Stripping the positional embedding from the head&rsquo;s input recovers only 2&ndash;4 pp. The reason is structural: position is added at the input and then propagates through twelve layers of attention, so subtracting it at the output removes the residual copy but not the information. The remaining option &mdash; an adversarial head that actively pushes position <em>out</em> of the representation &mdash; was not built. <a href="technical.html#rppp-nopos">Appendix &sect;4.2.4</a></p>
+  </div>
+</section>
+
+<!-- ================= 6. FAILURE 2 ================= -->
+<section class="sec" id="failure-2" aria-labelledby="failure-2-h">
+  <div class="col">
+    <div class="sec-head"><span class="num">6</span><h2 id="failure-2-h">Failure 2 &mdash; mask leakage</h2><span class="chip proven">Proven</span></div>
+
+    <div class="evidence">
+      <div><span class="k">Claim</span><span class="claim">The curriculum arms showed the encoder 40&ndash;60% of the answers it was being asked to predict.</span></div>
+      <div><span class="k">Measurement</span>45,600 per-image samples through the real data pipeline, with vanilla as a control: overlap exactly 0 across all 22,800 vanilla rows, against 39.9% and 59.7% of targets leaked in the two curriculum phases on CIFAR-10.</div>
+      <div class="rep"><span class="k">Replication</span>The leak is a property of the code, measured per image. The repaired run, <code>hc_fixed</code>, is a single seed (n = 1).</div>
+      <div class="link"><a href="technical.html#failure-leak">Evidence, appendix &sect;4.3</a></div>
+    </div>
+
+    <p><strong>The mechanism.</strong> I-JEPA guarantees that the patches the encoder sees (<a class="term" href="technical.html#term-context-target">context</a>) and the patches it must predict (targets) never overlap. That guarantee is the entire task.</p>
+    <p>The curriculum code re-drew the context mask <em>after</em> that guarantee had been established, using an unconstrained random draw. The guarantee was silently destroyed, and nothing in the training loop checked.</p>
+    <p><strong>How it was measured.</strong> 45,600 per-image samples through the real data pipeline, with vanilla as a control. CIFAR-10, means per image:</p>
+
+    <div class="tablewrap" tabindex="0"><table class="tbl">
+      <thead><tr><th scope="col"></th><th scope="col" class="n">context patches</th><th scope="col" class="n">target patches</th><th scope="col" class="n">overlap</th><th scope="col" class="n">% of targets leaked</th></tr></thead>
+      <tbody>
+        <tr><td>vanilla</td><td class="n">76.7</td><td class="n">115.0</td><td class="n"><strong>0</strong></td><td class="n">0%</td></tr>
+        <tr><td>curriculum, easy phase</td><td class="n">102.0</td><td class="n">115.3</td><td class="n">46.0</td><td class="n"><strong>39.9%</strong></td></tr>
+        <tr><td>curriculum, hard phase</td><td class="n">153.0</td><td class="n">114.9</td><td class="n">68.6</td><td class="n"><strong>59.7%</strong></td></tr>
+      </tbody>
+    </table></div>
+
+    <p>Vanilla&rsquo;s overlap is exactly zero across all 22,800 control samples. The curriculum showed the encoder <strong>40&ndash;60% of the answers it was being asked to predict.</strong></p>
+
+    <figure class="fig wide" id="v5" aria-labelledby="v5-t">
+      <div class="fig-title" id="v5-t">The mask leak, on the CIFAR-10 patch grid</div>
+      <div class="controls"><span class="lab">Mask state</span></div>
+      <div class="v5">
+        <div class="v5-grid" data-grid></div>
+        <div class="v5-readout" data-readout></div>
+      </div>
+      <figcaption class="figcap">16&times;16 patches, CIFAR-10. Context is blue, targets are hatched, overlap (the leak) is red. The grid is one illustrative draw sized to whole patches; the numbers beside it are the measured means over 45,600 samples. <a href="technical.html#leak-measurement">Appendix &sect;4.3.2</a></figcaption>
+    </figure>
+
+    <p><strong>It follows an exact law.</strong> Under uniform sampling the expected leak is <code>num_keep &times; |targets| / N</code>. Predicted: 45.94, 68.67, 25.14, 37.98 patches across the four configurations. Measured: 46.0, 68.6, 25.2, 38.0. Four for four, within a tenth of a patch. The leaked fraction tracks the context keep-ratio: 102/256 = 39.8% against a measured 39.9%, and 153/256 = 59.8% against 59.7%. <a href="technical.html#leak-law">Appendix &sect;4.3.3</a></p>
+    <p><strong>A second confound in the same direction.</strong> Vanilla gives the encoder 76.7 context patches. The curriculum gives 102 and 153 &mdash; 33% and 99% <em>more</em> than vanilla ever sees, on top of the leak. Both documents describing the project had assumed the curriculum <em>reduced</em> context. It increases it.</p>
+    <p><strong>The signature.</strong> Training loss 8&times; below baseline (0.021 vs 0.169) with a linear probe 2.9 pp <em>worse</em>. This is the project&rsquo;s recurring lesson in its clearest form:</p>
+    <blockquote><p>A falling loss is not evidence of learning. It is evidence that the task got easier.</p></blockquote>
+    <p><strong>The fix, and what it showed.</strong> Closing the leak did not rescue the method. <code>hc_fixed</code> peaks at 63.14% against vanilla&rsquo;s 68.50%. The leak was real <em>and</em> the curriculum design was independently wrong. <a href="technical.html#hc-fixed">Appendix &sect;4.3.6</a></p>
+  </div>
+</section>
+
+<!-- ================= 7. FAILURE 3 ================= -->
+<section class="sec" id="failure-3" aria-labelledby="failure-3-h">
+  <div class="col">
+    <div class="sec-head"><span class="num">7</span><h2 id="failure-3-h">Failure 3 &mdash; the baseline degrades</h2><span class="chip proven">Proven</span></div>
+
+    <div class="evidence">
+      <div><span class="k">Claim</span><span class="claim">The optimiser, not the measurement, drives the post-peak decline of vanilla I-JEPA.</span></div>
+      <div><span class="k">Measurement</span>Stopping the optimiser at the peak and training 200 more epochs changes linear probe accuracy by &minus;0.01 pp, against &minus;3.57 pp for vanilla over the same span.</div>
+      <div class="rep"><span class="k">Replication</span>The freeze runs are single runs (n = 1). One of three baseline seeds shows essentially no decline (section 9), so the decline is not universal.</div>
+      <div class="link"><a href="technical.html#failure-divergence">Evidence, appendix &sect;4.5</a></div>
+    </div>
+
+    <p>The most general finding, and the one that is not about our modifications at all.</p>
+    <p><strong>Vanilla I-JEPA peaks around epoch 200 and then gets worse.</strong> On CIFAR-10 the <a class="term" href="technical.html#term-linear-probe">linear probe</a> falls 68.50% &rarr; 64.93% between epoch 200 and 400. On STL-10, 77.14% &rarr; 73.70%. (Section 9 shows that this is real in two of three seeds and not universal.)</p>
+    <p><strong>It is in the features, not the measurement.</strong> <a class="term" href="technical.html#term-k-nn-accuracy">k-NN accuracy</a> has no fitted hyperparameters, and it declines alongside the linear probe &mdash; &minus;3.53 pp on CIFAR, &minus;5.27 pp on STL.</p>
+    <p><strong>The decisive experiment.</strong> Stop the optimiser at the peak, leave everything else running, and train 200 more epochs.</p>
+
+    <div class="tablewrap" tabindex="0"><table class="tbl">
+      <thead><tr><th scope="col">CIFAR-10 linear probe, %</th><th scope="col" class="n">at the freeze point</th><th scope="col" class="n">at epoch 400</th><th scope="col" class="n">change</th></tr></thead>
+      <tbody>
+        <tr><td>vanilla</td><td class="n">68.50</td><td class="n">64.93</td><td class="n"><strong>&minus;3.57 pp</strong></td></tr>
+        <tr><td>freeze @ ep200</td><td class="n">70.33</td><td class="n">70.32</td><td class="n"><strong>&minus;0.01 pp</strong></td></tr>
+        <tr><td>freeze @ ep150</td><td class="n">69.18</td><td class="n">69.58</td><td class="n"><strong>+0.40 pp</strong></td></tr>
+      </tbody>
+    </table></div>
+
+    <p>Frozen runs go flat and stay flat. This is a within-run comparison, so run-to-run variance does not touch it. <strong>The optimiser does the damage.</strong> <a href="technical.html#freeze-test">Appendix &sect;4.5.6</a></p>
+
+    <figure class="fig wide bleed" id="v6" aria-labelledby="v6-t">
+      <div class="fig-title" id="v6-t">Stopping the optimiser at the peak keeps the peak</div>
+      <div class="chart-scroll" id="v6-chart"></div>
+      <figcaption class="figcap">CIFAR-10 linear probe accuracy against epoch. Compare each run with itself: the three runs differ before the freeze points (68.40 against 69.69 at epoch 150) through run-to-run variance, which a within-run change does not carry.</figcaption>
+    </figure>
+
+    <p><strong>Four alternative explanations, each eliminated by its own measurement:</strong></p>
+    <ul>
+      <li><em>Probe underfitting?</em> k-NN is hyperparameter-free and declines too.</li>
+      <li><em>Memorisation?</em> Held-out JEPA loss falls alongside training loss (0.1855 &rarr; 0.1582) and the generalisation gap plateaus at 1.5%.</li>
+      <li><em>Over-regularisation?</em> Training loss falls monotonically &minus;19.5% across the decline window. A model regularised into oblivion has a <em>rising</em> loss.</li>
+      <li><em>Rank collapse?</em> Effective rank <em>rises</em> from epoch 200 to 300 on both datasets while accuracy falls.</li>
+    </ul>
+    <p>What remains: the encoder genuinely keeps getting better at masked latent prediction, on data it has never seen, while its representations become less useful. The <a class="term" href="technical.html#term-pretext-task">pretext objective</a> and the downstream task have diverged. <a href="technical.html#failure-divergence">Appendix &sect;4.5</a></p>
+  </div>
+</section>
+
+<!-- ================= 8. FAILURE 4 ================= -->
+<section class="sec" id="failure-4" aria-labelledby="failure-4-h">
+  <div class="col">
+    <div class="sec-head"><span class="num">8</span><h2 id="failure-4-h">Failure 4 &mdash; label-free evaluation misses it</h2><span class="chip proven">Proven</span></div>
+
+    <p>If a model peaks mid-training and you have no labels, you need an unsupervised signal to tell you when to stop. Effective rank is the standard candidate &mdash; <a class="term" href="technical.html#term-rankme">RankMe</a> (Garrido et al., ICML 2023) proposes exactly this.</p>
+    <p>Across every checkpoint in the project, <strong>no label-free signal locates the peak.</strong></p>
+
+    <div class="tablewrap" tabindex="0"><table class="tbl">
+      <caption>Mean absolute error, in epochs, between each signal&rsquo;s peak and the linear probe&rsquo;s peak.</caption>
+      <thead><tr><th scope="col">Signal</th><th scope="col" class="n">Peak-detection error, epochs</th></tr></thead>
+      <tbody>
+        <tr><td>mean token norm</td><td class="n">89.1</td></tr>
+        <tr><td>training loss</td><td class="n">106.0</td></tr>
+        <tr><td>entropy rank</td><td class="n">111.6</td></tr>
+        <tr><td>stable rank</td><td class="n">122.5</td></tr>
+        <tr><td>RankMe (token)</td><td class="n">125.2</td></tr>
+        <tr><td>held-out loss</td><td class="n">166.7</td></tr>
+      </tbody>
+    </table></div>
+
+    <p>And 53 separate (run, epoch-interval) pairs where effective rank <strong>rose while accuracy fell</strong>.</p>
+    <p>The nuance matters: rank correlates <em>positively</em> with accuracy across whole training trajectories (pooled Spearman +0.363, stable rank against linear probe). It tracks quality broadly and still cannot find the peak &mdash; which is the one thing checkpoint selection needs it for.</p>
+    <p>This should be framed as <em>rank-based selection fails in the post-peak small-data regime</em>, not as <em>RankMe is wrong</em>. Its claims were made at ImageNet scale on different method families. <a href="technical.html#failure-labelfree">Appendix &sect;4.6</a></p>
+  </div>
+</section>
+
+<!-- ================= 9. THE CORRECTION ================= -->
+<section class="sec" id="correction" aria-labelledby="correction-h">
+  <div class="col">
+    <div class="sec-head"><span class="num">9</span><h2 id="correction-h">The correction</h2><span class="chip correction">Correction</span></div>
+
+    <aside class="callout" aria-label="Correction: the seed bug">
+      <p class="label">Correction</p>
+      <p>Partway through, an audit found that <code>train.py</code> <strong>hardcoded the global random seed and never read it from the configuration.</strong> Every historical run &mdash; including every run labelled a &ldquo;seed replicate&rdquo; &mdash; shared one initialisation and one data order.</p>
+    </aside>
+
+    <div class="stats">
+      <div class="stat"><div class="v">&plusmn;3.04 pp</div><div class="l">seed standard deviation at peak, three genuine seeds. &plusmn;1.85 pp at epoch 400.</div></div>
+      <div class="stat"><div class="v">&plusmn;0.29 pp</div><div class="l">what had been reported as seed variance. It was nondeterminism jitter.</div></div>
+    </div>
+
+    <p>Properly measured, <a class="term" href="technical.html#term-seed">seed</a> variance is <strong>&plusmn;3.04 pp at peak and &plusmn;1.85 pp at epoch 400.</strong> Ten times larger.</p>
+    <p>Seeds change the <em>shape</em> of training, not just its level:</p>
+    <ul>
+      <li>seed 0 &mdash; peaks at epoch 200, declines 3.57 pp</li>
+      <li>seed 2 &mdash; rises monotonically to epoch 350, declines <strong>0.12 pp</strong></li>
+      <li>seed 3 &mdash; peaks at epoch 200, declines 3.67 pp</li>
+    </ul>
+    <p>One of three seeds shows essentially no decline at all. Failure mode 3 is real in two of three and <strong>not universal</strong> &mdash; the honest figure is &minus;2.45 &plusmn; 2.02 pp. <a href="technical.html#seed-variance">Appendix &sect;4.7.2</a></p>
+
+    <p><strong>What the noise floor removed:</strong></p>
+    <div class="tablewrap" tabindex="0"><table class="tbl">
+      <thead><tr><th scope="col">Claim</th><th scope="col" class="n">Measured</th><th scope="col">Against noise</th><th scope="col">Status</th></tr></thead>
+      <tbody>
+        <tr><td>Rotation prediction beats vanilla</td><td class="n">+2.27 pp</td><td>0.59&sigma;, inside seed noise</td><td><span class="chip refuted">dead</span></td></tr>
+        <tr><td>Moderate EMA caps improve ep400</td><td class="n">+1.4 to +1.5 pp</td><td>at the baseline mean</td><td><span class="chip refuted">dead</span></td></tr>
+        <tr><td>Flat weight decay halves the decline</td><td class="n">+2.0 pp</td><td>inside noise</td><td><span class="chip refuted">dead</span></td></tr>
+        <tr><td>Curriculum masking, leak-fixed</td><td class="n">&minus;5.4 pp</td><td>outside noise</td><td><span class="chip refuted">worse than vanilla</span></td></tr>
+        <tr><td>Positional shortcut fix recovers the head</td><td class="n">+2 to +4 pp</td><td>still collapsed</td><td><span class="chip refuted">failed</span></td></tr>
+      </tbody>
+    </table></div>
+    <p><a href="technical.html#noise-floor-claims">Appendix &sect;4.7.3</a></p>
+
+    <p><strong>One control came back clean and positive.</strong> RotNet-only &mdash; rotation prediction with no JEPA loss at all &mdash; reaches 61.95 &plusmn; 0.56% across three seeds, against I-JEPA+RP&rsquo;s 70.77% (a single run, n = 1). That is an 8.82 pp gap. <strong>The JEPA objective, not the rotation task, is doing the work.</strong> <a href="technical.html#rotnet-control">Appendix &sect;4.7.4</a></p>
+
+    <aside class="callout" aria-label="Correction: withdrawn results">
+      <p class="label">Withdrawn along the way</p>
+      <p>Claims made during the project and later contradicted by measurement. They are listed in full so they are not revived.</p>
+      <ul>
+        <li>Continuous (&Delta;row, &Delta;col) regression fixes the positional shortcut. Refuted: the readout is at R&sup2; = 1.0000.</li>
+        <li>Curriculum masking gives early acceleration (+8 pp at epoch 30). It rested on a table with fabricated entries; the canonical values are parity.</li>
+        <li>CIFAR&rsquo;s 2&times;2-pixel patches make the prediction task degenerate. Measured the other way: 0.287 against STL&rsquo;s 0.345.</li>
+        <li>The mask leak is hardness-coupled. It matches uniform sampling to within 0.1 of a patch.</li>
+        <li>Late-training degradation is weight-decay over-regularisation. Training loss falls throughout the decline.</li>
+        <li>Two broken measurement harnesses, whose outputs must not be cited.</li>
+        <li>I-JEPA requires dual objectives from the start. Unsupported.</li>
+        <li>Claims that dissolved against the corrected noise floor (table above).</li>
+      </ul>
+      <p>Across nine audit rounds, six arithmetically impossible values were reported as findings before every statistic was range-checked. <a href="technical.html#withdrawn">Withdrawn results, appendix &sect;6</a> &middot; <a href="technical.html#chronology">Audit chronology, appendix &sect;5</a></p>
+    </aside>
+  </div>
+</section>
+
+<!-- ================= 10. THE SURVIVOR ================= -->
+<section class="sec" id="survivor" aria-labelledby="survivor-h">
+  <div class="col">
+    <div class="sec-head"><span class="num">10</span><h2 id="survivor-h">The survivor</h2><span class="chip n1">n = 1 &mdash; unreplicated</span></div>
+
+    <p>One intervention clears the noise floor by a wide margin.</p>
+    <p>I-JEPA ramps its <a class="term" href="technical.html#term-ema-momentum">EMA momentum</a> from 0.996 to 1.0 over training, so the target encoder tracks the student closely early and freezes completely at the end. Holding momentum <strong>constant at 0.999 from epoch 0</strong> gives the encoder a stable target throughout.</p>
+
+    <div class="stats">
+      <div class="stat"><div class="v">+9.66 pp</div><div class="l">linear probe at peak, EMA 0.999 constant (78.16) against vanilla (68.50), CIFAR-10.</div><span class="chip n1">n = 1, unreplicated</span></div>
+    </div>
+
+    <div class="tablewrap" tabindex="0"><table class="tbl">
+      <thead><tr><th scope="col">CIFAR-10 linear probe, %</th><th scope="col" class="n">peak</th><th scope="col" class="n">epoch 400</th></tr></thead>
+      <tbody>
+        <tr><td>vanilla</td><td class="n">68.50</td><td class="n">64.93</td></tr>
+        <tr><td>baseline, 3-seed mean</td><td class="n">68.97 &plusmn; 3.04</td><td class="n">66.52 &plusmn; 1.85</td></tr>
+        <tr><td><strong>EMA 0.999 constant</strong> (n = 1, unreplicated)</td><td class="n"><strong>78.16</strong></td><td class="n"><strong>75.16</strong></td></tr>
+      </tbody>
+    </table></div>
+
+    <p><strong>+9.66 pp at peak (n = 1, unreplicated)</strong> against vanilla&rsquo;s 68.50. Against the three-seed baseline distribution, that is <strong>3.0&sigma; at peak and 4.7&sigma; at epoch 400</strong>. Every other EMA variant tested clusters at 66.3&ndash;66.5% at epoch 400; this one reaches 75.16%. <a href="technical.html#ema-result">Appendix &sect;4.8</a></p>
+
+    <figure class="fig wide bleed" id="v7" aria-labelledby="v7-t">
+      <div class="fig-title" id="v7-t">One run above the seed band</div>
+      <div class="chart-scroll" id="v7-chart"></div>
+      <figcaption class="figcap warn"><strong>n = 1, unreplicated.</strong> CIFAR-10 linear probe accuracy. The shaded band is the mean &plusmn; standard deviation of three baseline seeds at peak; hollow rings are seeds 2 and 3 at their peak and at epoch 400. EMA momentum held constant at 0.999 from epoch 0. <a href="technical.html#seed-variance">Appendix &sect;4.7.2</a></figcaption>
+    </figure>
+
+    <p><strong>This is a single run.</strong> It has not been replicated. It is 3.0&sigma; against a baseline distribution that itself rests on three seeds. Three seeds of the EMA configuration would settle it, and that is the immediate next step. The mechanism is hypothesised, not proven: a constant 0.999 gives the target a steadier lag throughout training, where the ramp makes it fast and noisy early and frozen late. <a href="technical.html#ema-result">Appendix &sect;4.8</a></p>
+  </div>
+</section>
+
+<!-- ================= 11. THE LEDGER ================= -->
+<section class="sec" id="ledger" aria-labelledby="ledger-h">
+  <div class="col">
+    <div class="sec-head"><span class="num">11</span><h2 id="ledger-h">The ledger</h2></div>
+    <p>Three columns. The third one matters as much as the first two.</p>
+  </div>
+  <div class="col">
+    <div class="ledger wide">
+      <section class="lcol" aria-labelledby="led-proven">
+        <span class="chip proven">Proven</span>
+        <h3 id="led-proven">What was shown</h3>
+        <p class="lsub">Measured, with a passing control.</p>
+        <ul>
+          <li>The diagnostic instrument, with a passing positive control <a href="technical.html#diagnostic-protocol">&sect;2.1</a></li>
+          <li>The positional shortcut &mdash; causal, both datasets, within-run before/after contrast <a href="technical.html#failure-positional">&sect;4.2</a></li>
+          <li>Mask leakage &mdash; an exact quantitative law over 45,600 measurements <a href="technical.html#failure-leak">&sect;4.3</a></li>
+          <li>The optimiser drives the post-peak decline &mdash; freeze test, &minus;0.01 pp <a href="technical.html#freeze-test">&sect;4.5.6</a></li>
+          <li>Four alternative explanations for that decline, each eliminated by measurement <a href="technical.html#failure-divergence">&sect;4.5</a></li>
+          <li>Label-free metrics miss the peak by roughly 100 epochs <a href="technical.html#failure-labelfree">&sect;4.6</a></li>
+          <li>RotNet-only is 8.82 pp below I-JEPA+RP across three seeds (I-JEPA+RP is a single run) <a href="technical.html#rotnet-control">&sect;4.7.4</a></li>
+          <li>Per-patch prediction error is heteroscedastic and content-driven, not positional <a href="technical.html#per-patch-error-structure">&sect;2.9</a></li>
+        </ul>
+      </section>
+      <section class="lcol" aria-labelledby="led-not">
+        <span class="chip notproven">Not proven</span>
+        <h3 id="led-not">What the evidence does not support</h3>
+        <p class="lsub">Tried or claimed, and not established.</p>
+        <ul>
+          <li>Any accuracy improvement from the original UARPT design <a href="technical.html#results-tables">&sect;4.1</a></li>
+          <li>Rotation prediction&rsquo;s advantage &mdash; 0.59&sigma;, inside seed noise <a href="technical.html#noise-floor-claims">&sect;4.7.3</a></li>
+          <li>That the late-training decline is universal &mdash; one of three seeds is flat <a href="technical.html#seed-variance">&sect;4.7.2</a></li>
+          <li>The EMA result &mdash; n = 1, no replication <a href="technical.html#ema-result">&sect;4.8</a></li>
+          <li>That any of this transfers to STL-10 at matched settings &mdash; the STL-10 baseline re-run under the new instrumentation was launched on a single GPU, which changes the effective batch size, and is invalid <a href="technical.html#diagnostic-and-repair-runs">&sect;3.2</a></li>
+          <li>That removing the positional shortcut rescues the auxiliary objective <a href="technical.html#rppp-nopos">&sect;4.2.4</a></li>
+          <li>Anything at ImageNet scale &mdash; entirely untested</li>
+        </ul>
+      </section>
+      <section class="lcol abandoned" aria-labelledby="led-aband">
+        <span class="chip abandoned">Abandoned</span>
+        <h3 id="led-aband">Abandoned without proper experimentation</h3>
+        <p class="lsub">Dropped on judgement, not on evidence. Recording them so the distinction stays visible.</p>
+        <ul>
+          <li><span class="lead">The curriculum as originally designed.</span> The intended method selected <em>prediction targets</em> by difficulty percentile. What was built selected <em>encoder context</em> by soft multinomial weighting. The designed version never ran. It was not revived, because the difficulty proxy is a target-side quantity being used to make a context-side decision, and the literature leans toward easy-first rather than hard-mining. <a href="technical.html#curriculum-design">&sect;4.4</a></li>
+          <li><span class="lead">Uncertainty-weighted latent prediction (&beta;-NLL).</span> The gate for this was measured and came back <strong>open</strong> &mdash; per-patch error has a coefficient of variation of 0.32&ndash;0.52 and a positional R&sup2; below 0.013, so the signal is heteroscedastic and content-driven, which is exactly what such a method needs. The method was never built. <a href="technical.html#open-items">&sect;4.10</a></li>
+          <li><span class="lead">The adversarial fix for the positional shortcut.</span> A gradient-reversal head that removes absolute position while the auxiliary recovers relative position. Designed, never implemented. <a href="technical.html#open-items">&sect;4.10</a></li>
+          <li><span class="lead">Predictor capacity.</span> The predictor is 384 wide against a 384-wide encoder &mdash; no width bottleneck, where the reference implementation has a 3.3&times; one. Never swept. <a href="technical.html#predictor">&sect;1.2</a></li>
+          <li><span class="lead">Mask geometry.</span> Block scales and counts were inherited from the ImageNet recipe, tuned for a 14&times;14 grid at 224px. Never re-tuned for a 16&times;16 grid of 2&times;2-pixel patches. <a href="technical.html#shared-hyperparameters">&sect;1.3</a></li>
+          <li><span class="lead">Anti-collapse regularisation.</span> LeJEPA / SIGReg is the current principled answer to this family of problems and would be the obvious baseline to compare against. Never run. <a href="technical.html#open-items">&sect;4.10</a></li>
+        </ul>
+      </section>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 12. WHERE IT STANDS ================= -->
+<section class="sec" id="decision" aria-labelledby="decision-h">
+  <div class="col">
+    <div class="sec-head"><span class="num">12</span><h2 id="decision-h">Where it stands</h2></div>
+    <p>Two paths, costed separately. They share only their first week.</p>
+    <p><strong>A &mdash; the diagnostic paper.</strong> <em>&ldquo;Failure modes of I-JEPA on small data.&rdquo;</em> Four mechanisms, each with a measurement, a signature and an attempted fix. The remaining work is replication, not discovery: nine runs, roughly 430 GPU-hours, about one week of experiments and six weeks to a draft. Nothing in it depends on a future result going a particular way.</p>
+    <p><strong>B &mdash; the method paper.</strong> <em>&ldquo;A stable EMA target improves I-JEPA on small data.&rdquo;</em> Conditional on the EMA result replicating at three seeds. Then a momentum dose-response curve, an STL-10 confirmation against a valid baseline, and ImageNet-100 for the scale claim. Roughly 35 runs, 4,500 GPU-hours, three months of experiments.</p>
+  </div>
+
+  <div class="col">
+<!-- PATHS:BEGIN generated by tools/sync_data.py from content/06-figure-data.json -->
+<div class="paths wide gap"><article class="path" id="path-a"><h3>A — the diagnostic paper</h3><p class="sub">&ldquo;Failure modes of I-JEPA on small data&rdquo;</p><dl><div><dt>Runs</dt><dd>9</dd></div><div><dt>GPU-hours</dt><dd>~430</dd></div><div><dt>Experiments</dt><dd>~1 week</dd></div><div><dt>To a draft</dt><dd>~6 weeks</dd></div><div><dt>Risk</dt><dd>low</dd></div></dl><ol class="phases"><li><span class="pn">1</span><div><div class="pl">Analysis only</div><div class="pd">Position readout on existing checkpoints; extend the label-free table; re-score against the noise floor</div><div class="pc">0 GPU-h &middot; Week 1</div></div></li><li><span class="pn">2</span><div><div class="pl">Seed replication</div><div class="pd">rppp ×2, hc_fixed ×2, freeze200 ×2 — brings failure modes 1–3 to n = 3</div><div class="pc">6 runs · ~250 GPU-h &middot; Week 1–2</div></div></li><li><span class="pn">3</span><div><div class="pl">STL-10 generalisation</div><div class="pd">Freeze test on STL ×1; valid multi-GPU STL baseline ×2 seeds</div><div class="pc">3 runs · ~180 GPU-h &middot; Week 2–3</div></div></li><li><span class="pn">4</span><div><div class="pl">Figures and drafting</div><div class="pd">All figure data already exists</div><div class="pc">0 GPU-h &middot; Week 3–6</div></div></li></ol></article><article class="path" id="path-b"><h3>B — the method paper</h3><p class="sub">&ldquo;A stable EMA target improves I-JEPA on small data&rdquo;</p><dl><div><dt>Runs</dt><dd>35</dd></div><div><dt>GPU-hours</dt><dd>~4,500</dd></div><div><dt>Experiments</dt><dd>~3 months</dd></div><div><dt>To a draft</dt><dd>~4 months</dd></div><div><dt>Risk</dt><dd>moderate</dd></div></dl><ol class="phases"><li><span class="pn">1</span><div><div class="pl">The gate — replicate at 3 seeds<span class="gate">gate</span></div><div class="pd">If it does not clear ±3.04 pp, stop and revert to path A</div><div class="pc">3 runs · ~130 GPU-h &middot; Week 1</div></div></li><li><span class="pn">2</span><div><div class="pl">Dose-response and mechanism</div><div class="pd">Constant momentum 0.998 / 0.9985 / 0.999 / 0.9995 / 0.9999 ×2 seeds; schedule-length interaction</div><div class="pc">12 runs · ~500 GPU-h &middot; Week 2–3</div></div></li><li><span class="pn">3</span><div><div class="pl">STL-10 confirmation</div><div class="pd">emaconst_high ×3 seeds plus a matched multi-GPU baseline ×3 seeds</div><div class="pc">6 runs · ~360 GPU-h &middot; Week 3–5</div></div></li><li><span class="pn">4</span><div><div class="pl">ImageNet-100 — the scale claim</div><div class="pd">ViT-S/16, 300 epochs, baseline and emaconst_high ×2 seeds. Dominates cost and risk</div><div class="pc">4 runs · ~3,500 GPU-h &middot; Week 5–12</div></div></li><li><span class="pn">5</span><div><div class="pl">Ablations and transfer</div><div class="pd">Batch-size interaction; transfer-suite probes; comparison against LeJEPA/SIGReg</div><div class="pc">~10 runs · ~400 GPU-h &middot; Week 10–14</div></div></li><li><span class="pn">6</span><div><div class="pl">Figures and drafting</div><div class="pd">Path A's diagnostics become the mechanism section</div><div class="pc">0 GPU-h &middot; Week 13–18</div></div></li></ol></article></div>
+<!-- PATHS:END -->
+  </div>
+
+  <div class="col">
+    <p class="figcap">Costs and timings are estimates as supplied. Path B&rsquo;s phase costs, as listed, sum to more than its headline 4,500 GPU-hours; the headline is kept as supplied until the plan is re-costed.</p>
+    <div class="decision gap">
+      <p class="big">The decision costs one week.</p>
+      <p>Three seeds of the EMA configuration &mdash; about 130 GPU-hours &mdash; tells us which paper exists. Path A&rsquo;s replication runs launch either way, and if the EMA result holds, path A&rsquo;s material becomes path B&rsquo;s mechanism section.</p>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="footer">
+  <div class="col">
+    <p><em>A project by Aryan Verma. Interim results, October 2026.</em></p>
+    <p>Full configurations, protocols, artifact paths and the complete audit record are in the <a href="technical.html">technical appendix</a>. The glossary is at <a href="technical.html#glossary">appendix &sect;8</a>.</p>
+  </div>
+</footer>
+
+<!-- D3 v7.9.0 from cdnjs, pinned with SRI. Chart.js is not used. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js" integrity="sha384-CjloA8y00+1SDAUkjs099PVfnY2KmDC2BZnws9kh8D/lX1s46w6EPhpXdqMfjK6i" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<!-- DATA:BEGIN generated by tools/sync_data.py from content/06-figure-data.json (inlined so the page works from file://) -->
+<script>
+window.UARPT_DATA = {
+  "_comment": "Numeric series for the main-page visualisations. Inline this into the page as a JS object; do not fetch it at runtime. All values are exact as measured — do not round.",
+
+  "project_arc": {
+    "_for": "V1",
+    "steps": [
+      { "id": "goal",        "label": "Hypothesis",        "sub": "MIM auxiliaries + curriculum", "anchor": "#goal" },
+      { "id": "setup",       "label": "14 runs",           "sub": "7 arms × 2 datasets",          "anchor": "#setup" },
+      { "id": "turn",        "label": "Nothing worked",    "sub": "5 of 7 arms invalid",          "anchor": "#turn" },
+      { "id": "instrument",  "label": "Built a probe",     "sub": "position R² + rank",           "anchor": "#instrument" },
+      { "id": "failures",    "label": "Four mechanisms",   "sub": "each measured",                "anchor": "#failure-1" },
+      { "id": "correction",  "label": "Seed correction",   "sub": "±3.04 pp, not ±0.29",          "anchor": "#correction" },
+      { "id": "survivor",    "label": "One survivor",      "sub": "EMA, n = 1",                   "anchor": "#survivor" },
+      { "id": "decision",    "label": "Two paths",         "sub": "costed",                       "anchor": "#decision" }
+    ]
+  },
+
+  "experiment_matrix": {
+    "_for": "V2",
+    "_note": "status drives cell colour: valid | unexplained | invalid",
+    "datasets": ["CIFAR-10", "STL-10"],
+    "arms": [
+      {
+        "id": "vanilla", "label": "vanilla", "adds": "baseline, unmodified",
+        "status": "valid",
+        "reason": "Healthy to epoch 200, then degrades — see failure mode 3",
+        "loss": { "CIFAR-10": 0.169, "STL-10": 0.179 },
+        "peak_lp": { "CIFAR-10": 68.50, "STL-10": 77.14 }
+      },
+      {
+        "id": "rp", "label": "rp", "adds": "rotation prediction",
+        "status": "unexplained",
+        "reason": "Only accuracy gain, but +2.27 pp is 0.59σ against seed noise — dissolves",
+        "loss": { "CIFAR-10": 0.108, "STL-10": 0.135 },
+        "peak_lp": { "CIFAR-10": 70.77, "STL-10": 79.34 }
+      },
+      {
+        "id": "rppp", "label": "rppp", "adds": "relative patch position",
+        "status": "invalid",
+        "reason": "Positional shortcut — encoder collapses to a position lookup within 26 epochs of the auxiliary activating",
+        "loss": { "CIFAR-10": 0.000, "STL-10": 0.003 },
+        "peak_lp": { "CIFAR-10": 53.48, "STL-10": 65.84 }
+      },
+      {
+        "id": "multitask", "label": "multitask", "adds": "rotation + relative position",
+        "status": "invalid",
+        "reason": "Inherits rppp's collapse",
+        "loss": { "CIFAR-10": 0.038, "STL-10": 0.047 },
+        "peak_lp": { "CIFAR-10": null, "STL-10": null }
+      },
+      {
+        "id": "uc", "label": "uc", "adds": "uncertainty curriculum",
+        "status": "invalid",
+        "reason": "40–60% of prediction targets leaked to the encoder; also never evaluated due to a path bug",
+        "loss": { "CIFAR-10": 0.019, "STL-10": 0.050 },
+        "peak_lp": { "CIFAR-10": null, "STL-10": null }
+      },
+      {
+        "id": "hc", "label": "hc", "adds": "hardness curriculum",
+        "status": "invalid",
+        "reason": "Same leak; and the hardness score is a fixed spatial prior, identical for every image",
+        "loss": { "CIFAR-10": 0.021, "STL-10": 0.050 },
+        "peak_lp": { "CIFAR-10": 62.02, "STL-10": 66.84 }
+      },
+      {
+        "id": "mtuc", "label": "mtuc", "adds": "multitask + uncertainty curriculum",
+        "status": "invalid",
+        "reason": "Both failure modes; also never evaluated",
+        "loss": { "CIFAR-10": 0.020, "STL-10": 0.030 },
+        "peak_lp": { "CIFAR-10": null, "STL-10": null }
+      }
+    ]
+  },
+
+  "baseline_signature": {
+    "_for": "V3",
+    "_caption": "CIFAR-10 vanilla. Position readout falls while effective rank rises — the signature of healthy training.",
+    "epochs": [30, 66, 400],
+    "cifar": {
+      "position_r2": [0.989, 0.981, 0.889],
+      "token_rank": [119, 208, 334],
+      "token_norm": [19.7, 19.9, 21.4]
+    },
+    "stl": {
+      "position_r2": [0.974, 0.954, 0.806],
+      "token_rank": [222, 278, 334],
+      "token_norm": [19.6, 20.0, 23.2]
+    },
+    "random_init_control": { "position_r2": 0.9999981, "token_rank": 21.0 },
+    "max_rank": 384
+  },
+
+  "positional_shortcut": {
+    "_for": "V4",
+    "_caption": "Token-level effective rank. The auxiliary objective activates at epoch 40.",
+    "aux_activation_epoch": 40,
+    "cifar": {
+      "epochs": [30, 66, 300],
+      "vanilla_rank": [119, 208, 334],
+      "rppp_rank": [117, 9.2, 5.9],
+      "vanilla_r2": [0.989, 0.981, 0.889],
+      "rppp_r2": [0.991, 0.9999, 1.0000],
+      "rppp_token_norm": [19.7, 28.7, 39.5],
+      "vanilla_lp": [53.46, 63.64, 65.58],
+      "rppp_lp": [53.48, 28.81, 23.42]
+    },
+    "stl": {
+      "epochs": [30, 66, 400],
+      "vanilla_rank": [222, 278, 334],
+      "rppp_rank": [221, 23.5, 17.2],
+      "vanilla_r2": [0.974, 0.954, 0.806],
+      "rppp_r2": [0.975, 0.9991, 1.0000],
+      "rppp_lp": [65.84, 28.84, 29.45]
+    }
+  },
+
+  "mask_leak": {
+    "_for": "V5",
+    "_caption": "Measured over 45,600 per-image samples. Vanilla's overlap is exactly zero.",
+    "_note": "Render as a 16x16 grid for CIFAR. Use the counts to place context / target / overlap cells; exact positions are arbitrary, the proportions are the point.",
+    "cifar": {
+      "grid": [16, 16],
+      "total_patches": 256,
+      "states": [
+        { "id": "vanilla",   "label": "Vanilla I-JEPA",     "n_ctx": 76.7,  "ctx_range": [41, 106], "n_tgt": 115.0, "n_overlap": 0,    "frac_leaked": 0.0   },
+        { "id": "easy",      "label": "Curriculum — easy",  "n_ctx": 102.0, "ctx_range": null,      "n_tgt": 115.3, "n_overlap": 46.0, "frac_leaked": 0.399 },
+        { "id": "hard",      "label": "Curriculum — hard",  "n_ctx": 153.0, "ctx_range": null,      "n_tgt": 114.9, "n_overlap": 68.6, "frac_leaked": 0.597 }
+      ]
+    },
+    "stl": {
+      "grid": [12, 12],
+      "total_patches": 144,
+      "states": [
+        { "id": "vanilla", "label": "Vanilla I-JEPA",    "n_ctx": 39.2, "ctx_range": [19, 55], "n_tgt": 63.6, "n_overlap": 0,    "frac_leaked": 0.0   },
+        { "id": "easy",    "label": "Curriculum — easy", "n_ctx": 57.0, "ctx_range": null,     "n_tgt": 63.5, "n_overlap": 25.2, "frac_leaked": 0.396 },
+        { "id": "hard",    "label": "Curriculum — hard", "n_ctx": 86.0, "ctx_range": null,     "n_tgt": 63.6, "n_overlap": 38.0, "frac_leaked": 0.597 }
+      ]
+    },
+    "uniform_law": {
+      "_note": "Expected leak = num_keep x |targets| / N. Four for four, within 0.1 of a patch.",
+      "rows": [
+        { "config": "CIFAR easy", "predicted": 45.94, "measured": 46.0 },
+        { "config": "CIFAR hard", "predicted": 68.67, "measured": 68.6 },
+        { "config": "STL easy",   "predicted": 25.14, "measured": 25.2 },
+        { "config": "STL hard",   "predicted": 37.98, "measured": 38.0 }
+      ]
+    }
+  },
+
+  "freeze_test": {
+    "_for": "V6",
+    "_caption": "Linear probe accuracy vs epoch, CIFAR-10. Frozen runs go flat and stay flat.",
+    "epochs": [30, 66, 100, 150, 200, 300, 400],
+    "series": [
+      { "id": "vanilla",   "label": "vanilla",      "colour": "accent",  "values": [53.46, 63.64, 67.19, 68.40, 68.50, 65.58, 64.93], "delta": -3.57 },
+      { "id": "freeze200", "label": "freeze @ 200",  "colour": "proven",  "values": [50.55, 62.47, 67.34, 69.69, 70.33, 69.99, 70.32], "delta": -0.01, "freeze_at": 200 },
+      { "id": "freeze150", "label": "freeze @ 150",  "colour": "proven",  "values": [51.17, 63.03, 66.87, 69.18, 69.41, 69.69, 69.58], "delta": 0.40,  "freeze_at": 150 }
+    ]
+  },
+
+  "seed_variance": {
+    "_for": "V7 — the shaded band",
+    "_caption": "Three genuine seeds of the baseline. Seed 2 shows essentially no decline.",
+    "seeds": [
+      { "seed": 0, "peak": 68.50, "peak_epoch": 200, "ep400": 64.93, "decline": -3.57 },
+      { "seed": 2, "peak": 66.20, "peak_epoch": 350, "ep400": 66.08, "decline": -0.12 },
+      { "seed": 3, "peak": 72.22, "peak_epoch": 200, "ep400": 68.55, "decline": -3.67 }
+    ],
+    "peak_mean": 68.97,
+    "peak_std": 3.04,
+    "ep400_mean": 66.52,
+    "ep400_std": 1.85,
+    "decline_mean": -2.45,
+    "decline_std": 2.02,
+    "previously_reported_std": 0.29
+  },
+
+  "ema_survivor": {
+    "_for": "V7 — the overlaid curve",
+    "_caption": "EMA momentum held constant at 0.999 from epoch 0. Single run, unreplicated.",
+    "epochs": [30, 66, 100, 150, 200, 250, 300, 350, 400],
+    "emaconst_high": [58.44, 67.45, 73.57, 77.10, 78.16, 77.16, 76.55, 75.64, 75.16],
+    "vanilla":       [53.46, 63.64, 67.19, 68.40, 68.50, null, 65.58, null, 64.93],
+    "peak": 78.16,
+    "peak_epoch": 200,
+    "ep400": 75.16,
+    "sigma_at_peak": 3.0,
+    "sigma_at_ep400": 4.7,
+    "replication_status": "n = 1, unreplicated",
+    "other_ema_variants_ep400_range": [66.3, 66.5]
+  },
+
+  "labelfree_metrics": {
+    "_for": "optional inline table in section 8",
+    "_caption": "Mean absolute error, in epochs, between each metric's peak and the linear probe's peak.",
+    "rows": [
+      { "metric": "mean token norm", "mae_epochs": 89.1 },
+      { "metric": "training loss",   "mae_epochs": 106.0 },
+      { "metric": "entropy rank",    "mae_epochs": 111.6 },
+      { "metric": "stable rank",     "mae_epochs": 122.5 },
+      { "metric": "RankMe (token)",  "mae_epochs": 125.2 },
+      { "metric": "held-out loss",   "mae_epochs": 166.7 }
+    ],
+    "counterexamples": 53,
+    "pooled_spearman_stable_rank": 0.363
+  },
+
+  "heldout_loss": {
+    "_for": "optional inline table in section 7",
+    "_caption": "van_baseline, CIFAR-10. Both fall; the gap widens to ep300 then plateaus.",
+    "epochs": [100, 200, 300, 400],
+    "train": [0.1811, 0.1887, 0.1672, 0.1429],
+    "heldout": [0.1855, 0.2009, 0.1827, 0.1582],
+    "gap_pct": [0.44, 1.22, 1.54, 1.53]
+  },
+
+  "ledger": {
+    "_for": "section 11 — three columns",
+    "proven": [
+      "The diagnostic instrument, with a passing positive control",
+      "The positional shortcut — causal, both datasets, within-run before/after contrast",
+      "Mask leakage — an exact quantitative law over 45,600 measurements",
+      "The optimiser drives the post-peak decline — freeze test, −0.01 pp",
+      "Four alternative explanations for that decline, each eliminated by measurement",
+      "Label-free metrics miss the peak by roughly 100 epochs",
+      "RotNet-only is 8.82 pp below I-JEPA+RP across three seeds",
+      "Per-patch prediction error is heteroscedastic and content-driven, not positional"
+    ],
+    "not_proven": [
+      "Any accuracy improvement from the original UARPT design",
+      "Rotation prediction's advantage — 0.59σ, inside seed noise",
+      "That the late-training decline is universal — one of three seeds is flat",
+      "The EMA result — n = 1, no replication",
+      "That any of this transfers to STL-10 at matched settings — the STL baseline run is invalid",
+      "That removing the positional shortcut rescues the auxiliary objective",
+      "Anything at ImageNet scale — entirely untested"
+    ],
+    "abandoned": [
+      "The curriculum as originally designed — target-side percentile selection; never ran",
+      "Uncertainty-weighted latent prediction (β-NLL) — gate measured and open, method never built",
+      "The adversarial fix for the positional shortcut — designed, never implemented",
+      "Predictor capacity — 1:1 width where the reference has a 3.3× bottleneck; never swept",
+      "Mask geometry — ImageNet defaults never re-tuned for a 16×16 grid of 2×2-pixel patches",
+      "Anti-collapse regularisation — LeJEPA / SIGReg is the obvious baseline; never run"
+    ]
+  },
+
+  "paths": {
+    "_for": "section 12",
+    "A": {
+      "title": "Diagnostic paper",
+      "subtitle": "Failure modes of I-JEPA on small data",
+      "runs": 9,
+      "gpu_hours": 430,
+      "experiment_time": "~1 week",
+      "to_draft": "~6 weeks",
+      "risk": "low",
+      "phases": [
+        { "n": 1, "label": "Analysis only",                     "detail": "Position readout on existing checkpoints; extend the label-free table; re-score against the noise floor", "cost": "0 GPU-h",             "when": "Week 1" },
+        { "n": 2, "label": "Seed replication",                  "detail": "rppp ×2, hc_fixed ×2, freeze200 ×2 — brings failure modes 1–3 to n = 3",                                "cost": "6 runs · ~250 GPU-h", "when": "Week 1–2" },
+        { "n": 3, "label": "STL-10 generalisation",             "detail": "Freeze test on STL ×1; valid multi-GPU STL baseline ×2 seeds",                                           "cost": "3 runs · ~180 GPU-h", "when": "Week 2–3" },
+        { "n": 4, "label": "Figures and drafting",              "detail": "All figure data already exists",                                                                         "cost": "0 GPU-h",             "when": "Week 3–6" }
+      ]
+    },
+    "B": {
+      "title": "Method paper",
+      "subtitle": "A stable EMA target improves I-JEPA on small data",
+      "runs": 35,
+      "gpu_hours": 4500,
+      "experiment_time": "~3 months",
+      "to_draft": "~4 months",
+      "risk": "moderate",
+      "phases": [
+        { "n": 1, "label": "The gate — replicate at 3 seeds",   "detail": "If it does not clear ±3.04 pp, stop and revert to path A",                        "cost": "3 runs · ~130 GPU-h",   "when": "Week 1",     "gate": true },
+        { "n": 2, "label": "Dose-response and mechanism",       "detail": "Constant momentum 0.998 / 0.9985 / 0.999 / 0.9995 / 0.9999 ×2 seeds; schedule-length interaction", "cost": "12 runs · ~500 GPU-h",  "when": "Week 2–3" },
+        { "n": 3, "label": "STL-10 confirmation",               "detail": "emaconst_high ×3 seeds plus a matched multi-GPU baseline ×3 seeds",              "cost": "6 runs · ~360 GPU-h",   "when": "Week 3–5" },
+        { "n": 4, "label": "ImageNet-100 — the scale claim",    "detail": "ViT-S/16, 300 epochs, baseline and emaconst_high ×2 seeds. Dominates cost and risk", "cost": "4 runs · ~3,500 GPU-h", "when": "Week 5–12" },
+        { "n": 5, "label": "Ablations and transfer",            "detail": "Batch-size interaction; transfer-suite probes; comparison against LeJEPA/SIGReg",  "cost": "~10 runs · ~400 GPU-h", "when": "Week 10–14" },
+        { "n": 6, "label": "Figures and drafting",              "detail": "Path A's diagnostics become the mechanism section",                               "cost": "0 GPU-h",               "when": "Week 13–18" }
+      ]
+    }
+  }
+};
+</script>
+<!-- DATA:END -->
+<script src="assets/charts.js" defer></script>
+<script src="assets/main.js" defer></script>
+</body>
+</html>

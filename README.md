@@ -43,6 +43,16 @@ appendix names them, it does not load them.
 ## Repository layout
 
 ```
+index.html                    the story (hand-written prose; figure data and path cards are generated)
+technical.html                the appendix (generated from content/)
+assets/
+  style.css                   shared stylesheet, tokens from DESIGN.md
+  charts.js                   the seven visualisations, D3 v7
+  main.js                     appendix contents dropdown and current-section highlight
+tools/
+  build_appendix.py           content/*.md -> technical.html
+  sync_data.py                content/06-figure-data.json -> index.html (inlined data, path cards)
+  check_site.py               self-check: anchors, numbers, caveats, glossary, house rules
 CLAUDE.md                     build brief — what to construct and how
 DESIGN.md                     palette, typography, components, what to avoid
 content/
@@ -78,9 +88,23 @@ GitHub Pages, `main` branch, `/` root. Settings → Pages → Source: *Deploy fr
 
 ## Regenerating
 
-Edit the relevant file under `content/`, then rebuild the affected page. Numbers in
-`06-figure-data.json` are exact as measured — do not round them, and keep every caveat
-(`n = 1`, `unreplicated`, `inside noise`) attached to the number it qualifies.
+The generated pages are committed, so Pages needs no build step. When `content/` changes, rebuild
+the part of the site that reads the file you edited. The scripts use only the Python standard library.
+
+| You edited | Run | What it rewrites |
+|---|---|---|
+| `02`, `03`, `04`, `05`, `07` or `08` (`.md`) | `python3 tools/build_appendix.py` | `technical.html`, in full. Sections are numbered automatically, and `§` references are re-resolved. |
+| `06-figure-data.json` | `python3 tools/sync_data.py` | the inlined data block and the section 12 path cards in `index.html` |
+| `01-story.md` | edit `index.html` by hand | the story prose, evidence cards and ledger are not generated |
+
+Then run `python3 tools/check_site.py`. It fails if an anchor is missing, a `§N` label no longer matches
+the appendix, a number on either page is not found in `content/`, a glossary term lost its anchor, or a
+caveat has come loose from its number.
+
+Numbers in `06-figure-data.json` are exact as measured — do not round them, and keep every caveat
+(`n = 1, unreplicated`; `0.59σ, inside seed noise`) attached to the number it qualifies.
+A few `[DISPUTED]` and `[OPEN]` notes in the appendix are written in `tools/build_appendix.py` (the `NOTES`
+table) rather than in `content/`; remove them there once the source files agree.
 
 ---
 
