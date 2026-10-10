@@ -129,7 +129,7 @@ estimate that was ten times too small.
 
 ## 9. Process note
 
-Across nine audit rounds, **six arithmetically impossible values were reported as
+Across ten audit rounds, **six arithmetically impossible values were reported as
 findings**: five negative R² from OLS regressions with an intercept (bounded ≥ 0 on their
 own fitting data) and one cosine similarity above 1. In every case the impossible value
 was annotated and reasoned past rather than treated as a stop condition.

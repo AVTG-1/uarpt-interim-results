@@ -2,7 +2,7 @@
 
 Every protocol used, with its control. Appendix section 2.
 
-The governing rule, learned the hard way across nine audit rounds:
+The governing rule, learned the hard way across ten audit rounds:
 
 > **A measurement without a passing control is not a measurement.**
 
@@ -117,15 +117,38 @@ since both went through the same path. Unresolved. `[OPEN]`
 
 ## 5. k-NN protocol
 
-`[CODE]` Cosine similarity on L2-normalised vectors, minimum norm clamped at 1e-8.
+`[CODE + MEASURED]` Cosine similarity on L2-normalised vectors, minimum norm clamped at 1e-8.
 k ∈ {5, 10, 20}, default 20. Similarity-weighted vote via `scatter_add_`.
 
 **Validation.** Three independent metric choices — cosine-weighted, cosine-unweighted,
 euclidean — agree within 1 pp on every arm tested. The LP−kNN gap is therefore a property
 of the features, not an artifact of the protocol.
 
+| Config | Cosine-weighted | Cosine-unweighted | Euclidean | LP−kNN gap |
+|---|---|---|---|---|
+| CIFAR vanilla ep400 | 56.68 | 56.27 | 56.87 | +8.25 pp |
+| CIFAR rp ep400 | 55.13 | 55.15 | 55.43 | **+15.64 pp** |
+| STL vanilla ep400 | 64.78 | 64.42 | 64.36 | +8.92 pp |
+| STL rp ep400 | 57.88 | 58.08 | 58.36 | **+21.46 pp** |
+
+`[DISPUTED]` The table above and the centred table below give different STL-10 LP−kNN gaps for the same quantity: vanilla +8.92 pp against 9.47, and rp +21.46 pp against 17.02, a difference of 4.44 pp for rp. The two tables come from different audit rounds and may use different epochs or protocols. The source does not say which, and neither figure is preferred here. The CIFAR-10 gaps agree (8.25 and 15.64 in both).
+
 Additional variants computed: column-centered then L2-normalised, and diagonally
-whitened. Centering closes only ~11% of vanilla's gap.
+whitened (`stage0d/knn_centered.csv`):
+
+| Dataset | Arm | Gap (original → centered) | μ ratio `‖μ‖/mean‖z‖` |
+|---|---|---|---|
+| CIFAR | vanilla | 8.25 → 7.60 | 0.630 |
+| CIFAR | rp | 15.64 → 16.09 | 0.698 |
+| CIFAR | rppp | −3.64 → −6.01 | **1.0000** |
+| STL | vanilla | 9.47 → 8.82 | 0.622 |
+| STL | rp | 17.02 → 17.47 | 0.695 |
+| STL | rppp | 0.31 → −1.15 | **1.0000** |
+
+Centering closes only ~11% of vanilla's gap. It makes RP's gap slightly *worse*, so RP's
+distortion is not a shared-offset phenomenon. The residual gap is consistent with the
+DMT-JEPA argument that I-JEPA has comparatively weak *local* semantics. Reference:
+VICReg/ResNet-18 reports k-NN *above* LP on CIFAR-10 and near-parity on STL-10.
 
 ---
 
@@ -142,8 +165,11 @@ k-NN control, which is hyperparameter-free and declines alongside it.
 
 ## 7. CKA
 
-`eval/cka_analysis.py` lines 77–78. Linear CKA with per-column centering, matching
-Kornblith et al. 2019. Verified correct.
+`[CODE]` `eval/cka_analysis.py` lines 77–78 implement `_center()` per column before computing
+alignment (linear CKA with per-column centering), matching Kornblith et al. 2019. Verified
+correct. A concern raised during review arose from a planning document omitting the centering
+step in its *written formula*; the code is correct. Existing CKA matrices stand.
+`CKA(RP, Vanilla) = 0.096` is valid.
 
 ---
 
@@ -196,6 +222,6 @@ table.
 | RankMe | [1, D] |
 | Fraction leaked | [0, 1] |
 
-Across nine audit rounds, **six out-of-range values were reported as findings** before
+Across ten audit rounds, **six out-of-range values were reported as findings** before
 this rule was adopted: five negative R² and one cosine above 1. Each was a broken
 harness.

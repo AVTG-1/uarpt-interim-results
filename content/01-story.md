@@ -15,7 +15,7 @@ one unreplicated lead, and a measurement that explains all of them.
 
 *A project by Aryan Verma*
 
-`15 training runs · 444 GPU-hours · 9 rounds of audit · CIFAR-10 and STL-10`
+`15 training runs · ~464 GPU-hours · 10 rounds of audit · CIFAR-10 and STL-10`
 
 [V1 — project arc]
 
@@ -135,10 +135,12 @@ suppressing everything else.
 **How it was proven.** The auxiliary objective activates at epoch 40, which gives a
 before/after contrast inside a single training run — no cross-run comparison needed.
 
-| | ep30 (before) | ep66 (after) | ep300 |
+| | ep30 (before) | ep66 (after) | last milestone |
 |---|---|---|---|
-| vanilla — R² / rank | 0.989 / 119 | 0.981 / 208 | 0.889 / 334 |
-| rppp — R² / rank | **0.991 / 117** | 0.9999 / 9.2 | **1.0000 / 5.9** |
+| vanilla — R² / rank | 0.989 / 119 | 0.981 / 208 | 0.889 / 334 (ep400) |
+| rppp — R² / rank | **0.991 / 117** | 0.9999 / 9.2 | **1.0000 / 5.9** (ep300) |
+
+rppp's last CIFAR-10 milestone is ep300 because its ep400 checkpoint is corrupt. Vanilla's last is ep400.
 
 At epoch 30 the two runs are statistically indistinguishable. Within 26 epochs of the
 auxiliary switching on, position readout is **perfect** and the encoder has collapsed
@@ -152,7 +154,7 @@ the same pattern. → `technical.html#failure-positional`
 [V4 — positional shortcut]
 
 **The fix we tried, and why it failed.** Stripping the positional embedding from the
-head's input recovers only 2–4 pp. The reason is structural: position is added at the
+head's input ends at a final linear probe of 28.48%. Against CIFAR rppp's ep300 (23.42%) that is +5.06 pp; against STL rppp's ep400 (29.45%) it is −0.97 pp, so the direction depends on the comparator. It is not a fix. The reason is structural: position is added at the
 input and then propagates through twelve layers of attention, so subtracting it at the
 output removes the residual copy but not the information. The remaining option — an
 adversarial head that actively pushes position *out* of the representation — was not
@@ -236,8 +238,8 @@ variance does not touch it. **The optimiser does the damage.**
 **Four alternative explanations, each eliminated by its own measurement:**
 
 - *Probe underfitting?* k-NN is hyperparameter-free and declines too.
-- *Memorisation?* Held-out JEPA loss falls alongside training loss (0.186 → 0.158) and
-  the generalisation gap plateaus at 1.5%.
+- *Memorisation?* Held-out JEPA loss falls alongside training loss (0.1855 → 0.1582). The
+  absolute gap plateaus near 0.015 while the relative gap grows from 2.4% to 10.7%.
 - *Over-regularisation?* Training loss falls monotonically −19.5% across the decline
   window. A model regularised into oblivion has a *rising* loss.
 - *Rank collapse?* Effective rank *rises* from epoch 200 to 300 on both datasets while
@@ -310,11 +312,11 @@ of three and **not universal** — the honest figure is −2.45 ± 2.02 pp.
 | Moderate EMA caps improve ep400 | +1.4 to +1.5 pp | at the baseline mean | dead |
 | Flat weight decay halves the decline | +2.0 pp | inside noise | dead |
 | Curriculum masking, leak-fixed | −5.4 pp | outside noise | worse than vanilla |
-| Positional shortcut fix recovers the head | +2 to +4 pp | still collapsed | failed |
+| Positional shortcut fix recovers the head | 28.48% final LP (+5.06 pp or −0.97 pp, by comparator) | still collapsed | failed |
 
 **One control came back clean and positive.** RotNet-only — rotation prediction with no
 JEPA loss at all — reaches 61.95 ± 0.56% across three seeds, against I-JEPA+RP's 70.77%.
-An 8.82 pp gap at fifteen times the seed standard deviation. **The JEPA objective, not
+An 8.82 pp gap, 15× RotNet's own three-seed standard deviation; the 70.77 comparator is n = 1 from the fixed-seed sweep. **The JEPA objective, not
 the rotation task, is doing the work.** → `technical.html#seed-correction`
 
 ---
@@ -335,9 +337,9 @@ tracks the student closely early and freezes completely at the end. Holding mome
 | baseline, 3-seed mean | 68.97 ± 3.04 | 66.52 ± 1.85 |
 | **EMA 0.999 constant** | **78.16** | **75.16** |
 
-**+9.66 pp at peak — 3.0σ at peak, 4.7σ at epoch 400** against properly measured seed
-variance. Every other EMA variant tested clusters at 66.3–66.5% at epoch 400; this one
-sits nine points clear of all of them.
+**+9.19 pp at peak, 3.0σ (n = 1, unreplicated), and +8.64 pp at epoch 400, 4.7σ**, against
+the three-seed baseline means (68.97 and 66.52). Every other EMA variant tested clusters at
+66.3–66.5% at epoch 400; this one reaches 75.16%.
 
 [V7 — seed variance band and the survivor]
 

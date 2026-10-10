@@ -1,6 +1,6 @@
 # Audit chronology
 
-Nine rounds of review between the completion of the original sweep and the current
+Ten rounds of review between the completion of the original sweep and the current
 state. Each round is listed with what it settled and what it got wrong.
 
 This section exists because the project's conclusions changed substantially several
@@ -94,8 +94,9 @@ ablation was specified but not launched.
 
 ## Round 1a
 
-**Settled:** held-out JEPA loss finally measured. Both train and test loss fall; the gap
-widens to ep300 then plateaus at 1.5%. **Memorisation ruled out** — the finding is
+**Settled:** held-out JEPA loss finally measured. Both train and test loss fall; the absolute
+gap widens to ep300 then plateaus near 0.015, while the relative gap grows from 2.4% to
+10.7%. **Memorisation ruled out** — the finding is
 objective/representation divergence.
 
 **Wrong:** a claim that three schedule-ablation variants had all failed to eliminate the
@@ -130,7 +131,7 @@ Closing experimental round. Seed bug fixed; genuine three-seed replication run.
   objective does the work.
 - Label-free metrics miss the LP peak by 89–167 epochs.
 - The error-structure gate: CV 0.32–0.52, positional R² < 0.013 — open.
-- `van_emaconst_high`: +9.66 pp at peak, 3.0σ. **n = 1.**
+- `van_emaconst_high`: +9.19 pp at peak against the three-seed baseline mean, 3.0σ. **n = 1, unreplicated.**
 
 ---
 

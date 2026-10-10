@@ -30,7 +30,7 @@
     <h1 id="title">UARPT &mdash; what the project actually found</h1>
     <p class="lede">Six upgrades to I-JEPA, tested against an unmodified baseline. Zero improvements that clear seed noise. Four characterised failure modes, one unreplicated lead, and the measurements that established each of them.</p>
     <p class="byline">A project by Aryan Verma</p>
-    <p class="meta"><span>14-run original sweep</span><span>~444 GPU-hours in total</span><span>9 rounds of audit</span><span>CIFAR-10 and STL-10</span></p>
+    <p class="meta"><span>14-run original sweep</span><span>~464 GPU-hours in total</span><span>10 rounds of audit</span><span>CIFAR-10 and STL-10</span></p>
   </div>
 </section>
 
@@ -150,12 +150,13 @@
     <p><strong>How it was proven.</strong> The auxiliary objective activates at epoch 40, which gives a before/after contrast inside a single training run &mdash; no cross-run comparison needed.</p>
 
     <div class="tablewrap" tabindex="0"><table class="tbl">
-      <thead><tr><th scope="col">CIFAR-10</th><th scope="col" class="n">ep30 (before)</th><th scope="col" class="n">ep66 (after)</th><th scope="col" class="n">ep300</th></tr></thead>
+      <thead><tr><th scope="col">CIFAR-10</th><th scope="col" class="n">ep30 (before)</th><th scope="col" class="n">ep66 (after)</th><th scope="col" class="n">last milestone</th></tr></thead>
       <tbody>
-        <tr><td>vanilla &mdash; R&sup2; / rank</td><td class="n">0.989 / 119</td><td class="n">0.981 / 208</td><td class="n">0.889 / 334</td></tr>
-        <tr><td>rppp &mdash; R&sup2; / rank</td><td class="n"><strong>0.991 / 117</strong></td><td class="n">0.9999 / 9.2</td><td class="n"><strong>1.0000 / 5.9</strong></td></tr>
+        <tr><td>vanilla &mdash; R&sup2; / rank</td><td class="n">0.989 / 119</td><td class="n">0.981 / 208</td><td class="n">0.889 / 334 (ep400)</td></tr>
+        <tr><td>rppp &mdash; R&sup2; / rank</td><td class="n"><strong>0.991 / 117</strong></td><td class="n">0.9999 / 9.2</td><td class="n"><strong>1.0000 / 5.9</strong> (ep300)</td></tr>
       </tbody>
     </table></div>
+    <p class="figcap">rppp&rsquo;s last CIFAR-10 milestone is ep300 because its ep400 checkpoint is corrupt. Vanilla&rsquo;s last is ep400.</p>
 
     <p>At epoch 30 the two runs are statistically indistinguishable. Within 26 epochs of the auxiliary switching on, position readout is <strong>0.9999</strong> and the encoder has collapsed from 117 usable dimensions to <strong>9.2</strong>; by epoch 300 the readout is <strong>1.0000</strong> and the rank <strong>5.9</strong> &mdash; roughly what a two-dimensional sinusoidal position code occupies. Token norms <em>rise</em> over the same period (19.7 &rarr; 28.7 &rarr; 39.5), so the encoder is amplifying that low-rank positional subspace, not merely shrinking.</p>
     <p>Linear probe accuracy follows exactly: <strong>53.48% &rarr; 28.81% &rarr; 23.42%</strong>. Both datasets show the same pattern. <a href="technical.html#failure-positional">Appendix &sect;4.2</a></p>
@@ -164,10 +165,10 @@
       <div class="fig-title" id="v4-t">Identical before epoch 40, far apart after</div>
       <div class="controls"><span class="lab">Dataset</span></div>
       <div class="chart-scroll" id="v4-chart"></div>
-      <figcaption class="figcap">Token-level effective rank of vanilla and rppp, <span data-cap-ds>CIFAR-10</span> (switch above). Milestones are not to scale; the last pair is <span data-cap-last>ep300</span>. Vanilla&rsquo;s last CIFAR-10 values (0.889 / 334) are reported at epoch 400 in the instrument chart and at epoch 300 here; the source files disagree and the label is unresolved (<a href="technical.html#positional-evidence">appendix &sect;4.2.2</a>).</figcaption>
+      <figcaption class="figcap">Token-level effective rank of vanilla and rppp, <span data-cap-ds>CIFAR-10</span> (switch above). Milestones are not to scale. Last pair: <span data-cap-last>vanilla at ep400 against rppp at ep300, because rppp&rsquo;s ep400 checkpoint is corrupt</span>. <a href="technical.html#positional-evidence">Appendix &sect;4.2.2</a></figcaption>
     </figure>
 
-    <p><strong>The fix we tried, and why it failed.</strong> Stripping the positional embedding from the head&rsquo;s input recovers only 2&ndash;4 pp. The reason is structural: position is added at the input and then propagates through twelve layers of attention, so subtracting it at the output removes the residual copy but not the information. The remaining option &mdash; an adversarial head that actively pushes position <em>out</em> of the representation &mdash; was not built. <a href="technical.html#rppp-nopos">Appendix &sect;4.2.4</a></p>
+    <p><strong>The fix we tried, and why it failed.</strong> Stripping the positional embedding from the head&rsquo;s input ends at a final linear probe of 28.48%. Against CIFAR rppp&rsquo;s ep300 (23.42%) that is +5.06 pp; against STL rppp&rsquo;s ep400 (29.45%) it is &minus;0.97 pp, so the direction depends on the comparator. It is not a fix. The reason is structural: position is added at the input and then propagates through twelve layers of attention, so subtracting it at the output removes the residual copy but not the information. The remaining option &mdash; an adversarial head that actively pushes position <em>out</em> of the representation &mdash; was not built. <a href="technical.html#rppp-nopos">Appendix &sect;4.2.4</a></p>
   </div>
 </section>
 
@@ -253,7 +254,7 @@
     <p><strong>Four alternative explanations, each eliminated by its own measurement:</strong></p>
     <ul>
       <li><em>Probe underfitting?</em> k-NN is hyperparameter-free and declines too.</li>
-      <li><em>Memorisation?</em> Held-out JEPA loss falls alongside training loss (0.1855 &rarr; 0.1582) and the generalisation gap plateaus at 1.5%.</li>
+      <li><em>Memorisation?</em> Held-out JEPA loss falls alongside training loss (0.1855 &rarr; 0.1582). The absolute gap plateaus near 0.015 while the relative gap grows from 2.4% to 10.7%.</li>
       <li><em>Over-regularisation?</em> Training loss falls monotonically &minus;19.5% across the decline window. A model regularised into oblivion has a <em>rising</em> loss.</li>
       <li><em>Rank collapse?</em> Effective rank <em>rises</em> from epoch 200 to 300 on both datasets while accuracy falls.</li>
     </ul>
@@ -320,12 +321,12 @@
         <tr><td>Moderate EMA caps improve ep400</td><td class="n">+1.4 to +1.5 pp</td><td>at the baseline mean</td><td><span class="chip refuted">dead</span></td></tr>
         <tr><td>Flat weight decay halves the decline</td><td class="n">+2.0 pp</td><td>inside noise</td><td><span class="chip refuted">dead</span></td></tr>
         <tr><td>Curriculum masking, leak-fixed</td><td class="n">&minus;5.4 pp</td><td>outside noise</td><td><span class="chip refuted">worse than vanilla</span></td></tr>
-        <tr><td>Positional shortcut fix recovers the head</td><td class="n">+2 to +4 pp</td><td>still collapsed</td><td><span class="chip refuted">failed</span></td></tr>
+        <tr><td>Positional shortcut fix recovers the head</td><td class="n">28.48% final LP (+5.06 pp or &minus;0.97 pp, by comparator)</td><td>still collapsed</td><td><span class="chip refuted">failed</span></td></tr>
       </tbody>
     </table></div>
     <p><a href="technical.html#noise-floor-claims">Appendix &sect;4.7.3</a></p>
 
-    <p><strong>One control came back clean and positive.</strong> RotNet-only &mdash; rotation prediction with no JEPA loss at all &mdash; reaches 61.95 &plusmn; 0.56% across three seeds, against I-JEPA+RP&rsquo;s 70.77% (a single run, n = 1). That is an 8.82 pp gap. <strong>The JEPA objective, not the rotation task, is doing the work.</strong> <a href="technical.html#rotnet-control">Appendix &sect;4.7.4</a></p>
+    <p><strong>One control came back clean and positive.</strong> RotNet-only &mdash; rotation prediction with no JEPA loss at all &mdash; reaches 61.95 &plusmn; 0.56% across three seeds, against I-JEPA+RP&rsquo;s 70.77% (n = 1, from the fixed-seed sweep). That is an 8.82 pp gap, 15&times; RotNet&rsquo;s own three-seed standard deviation. <strong>The JEPA objective, not the rotation task, is doing the work.</strong> <a href="technical.html#rotnet-control">Appendix &sect;4.7.4</a></p>
 
     <aside class="callout" aria-label="Correction: withdrawn results">
       <p class="label">Withdrawn along the way</p>
@@ -340,7 +341,7 @@
         <li>I-JEPA requires dual objectives from the start. Unsupported.</li>
         <li>Claims that dissolved against the corrected noise floor (table above).</li>
       </ul>
-      <p>Across nine audit rounds, six arithmetically impossible values were reported as findings before every statistic was range-checked. <a href="technical.html#withdrawn">Withdrawn results, appendix &sect;6</a> &middot; <a href="technical.html#chronology">Audit chronology, appendix &sect;5</a></p>
+      <p>Across ten audit rounds, six arithmetically impossible values were reported as findings before every statistic was range-checked. <a href="technical.html#withdrawn">Withdrawn results, appendix &sect;6</a> &middot; <a href="technical.html#chronology">Audit chronology, appendix &sect;5</a></p>
     </aside>
   </div>
 </section>
@@ -354,7 +355,7 @@
     <p>I-JEPA ramps its <a class="term" href="technical.html#term-ema-momentum">EMA momentum</a> from 0.996 to 1.0 over training, so the target encoder tracks the student closely early and freezes completely at the end. Holding momentum <strong>constant at 0.999 from epoch 0</strong> gives the encoder a stable target throughout.</p>
 
     <div class="stats">
-      <div class="stat"><div class="v">+9.66 pp</div><div class="l">linear probe at peak, EMA 0.999 constant (78.16) against vanilla (68.50), CIFAR-10.</div><span class="chip n1">n = 1, unreplicated</span></div>
+      <div class="stat"><div class="v">+9.19 pp</div><div class="l">linear probe at peak, EMA 0.999 constant (78.16) against the three-seed baseline mean (68.97), CIFAR-10.</div><span class="chip n1">n = 1, unreplicated</span></div>
     </div>
 
     <div class="tablewrap" tabindex="0"><table class="tbl">
@@ -366,7 +367,7 @@
       </tbody>
     </table></div>
 
-    <p><strong>+9.66 pp at peak (n = 1, unreplicated)</strong> against vanilla&rsquo;s 68.50. Against the three-seed baseline distribution, that is <strong>3.0&sigma; at peak and 4.7&sigma; at epoch 400</strong>. Every other EMA variant tested clusters at 66.3&ndash;66.5% at epoch 400; this one reaches 75.16%. <a href="technical.html#ema-result">Appendix &sect;4.8</a></p>
+    <p><strong>+9.19 pp at peak (n = 1, unreplicated)</strong> against the three-seed baseline mean of 68.97 is <strong>3.0&sigma;</strong>. At epoch 400 it is <strong>+8.64 pp</strong> against 66.52, <strong>4.7&sigma;</strong>. Every other EMA variant tested clusters at 66.3&ndash;66.5% at epoch 400; this one reaches 75.16%. <a href="technical.html#ema-result">Appendix &sect;4.8</a></p>
 
     <figure class="fig wide bleed" id="v7" aria-labelledby="v7-t">
       <div class="fig-title" id="v7-t">One run above the seed band</div>
@@ -567,6 +568,8 @@ window.UARPT_DATA = {
     "aux_activation_epoch": 40,
     "cifar": {
       "epochs": [30, 66, 300],
+      "vanilla_epochs": [30, 66, 400],
+      "vanilla_lp_epochs": [30, 66, 300],
       "vanilla_rank": [119, 208, 334],
       "rppp_rank": [117, 9.2, 5.9],
       "vanilla_r2": [0.989, 0.981, 0.889],
@@ -658,6 +661,8 @@ window.UARPT_DATA = {
     "sigma_at_peak": 3.0,
     "sigma_at_ep400": 4.7,
     "replication_status": "n = 1, unreplicated",
+    "_reference": "Deltas are against the three-seed baseline means (seed_variance.peak_mean, seed_variance.ep400_mean), the same reference as the sigma values.",
+    "delta_pp_vs_three_seed_mean": { "peak": 9.19, "ep400": 8.64 },
     "other_ema_variants_ep400_range": [66.3, 66.5]
   },
 
@@ -678,11 +683,12 @@ window.UARPT_DATA = {
 
   "heldout_loss": {
     "_for": "optional inline table in section 7",
-    "_caption": "van_baseline, CIFAR-10. Both fall; the gap widens to ep300 then plateaus.",
+    "_caption": "van_baseline, CIFAR-10. Both fall from ep200; the absolute gap widens to ep300 then plateaus near 0.015 while the relative gap grows from 2.4% to 10.7%.",
     "epochs": [100, 200, 300, 400],
     "train": [0.1811, 0.1887, 0.1672, 0.1429],
     "heldout": [0.1855, 0.2009, 0.1827, 0.1582],
-    "gap_pct": [0.44, 1.22, 1.54, 1.53]
+    "abs_diff_x100": [0.44, 1.22, 1.54, 1.53],
+    "relative_gap_pct": [2.4, 6.5, 9.3, 10.7]
   },
 
   "ledger": {

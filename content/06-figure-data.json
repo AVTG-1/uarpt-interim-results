@@ -96,6 +96,8 @@
     "aux_activation_epoch": 40,
     "cifar": {
       "epochs": [30, 66, 300],
+      "vanilla_epochs": [30, 66, 400],
+      "vanilla_lp_epochs": [30, 66, 300],
       "vanilla_rank": [119, 208, 334],
       "rppp_rank": [117, 9.2, 5.9],
       "vanilla_r2": [0.989, 0.981, 0.889],
@@ -187,6 +189,8 @@
     "sigma_at_peak": 3.0,
     "sigma_at_ep400": 4.7,
     "replication_status": "n = 1, unreplicated",
+    "_reference": "Deltas are against the three-seed baseline means (seed_variance.peak_mean, seed_variance.ep400_mean), the same reference as the sigma values.",
+    "delta_pp_vs_three_seed_mean": { "peak": 9.19, "ep400": 8.64 },
     "other_ema_variants_ep400_range": [66.3, 66.5]
   },
 
@@ -207,11 +211,12 @@
 
   "heldout_loss": {
     "_for": "optional inline table in section 7",
-    "_caption": "van_baseline, CIFAR-10. Both fall; the gap widens to ep300 then plateaus.",
+    "_caption": "van_baseline, CIFAR-10. Both fall from ep200; the absolute gap widens to ep300 then plateaus near 0.015 while the relative gap grows from 2.4% to 10.7%.",
     "epochs": [100, 200, 300, 400],
     "train": [0.1811, 0.1887, 0.1672, 0.1429],
     "heldout": [0.1855, 0.2009, 0.1827, 0.1582],
-    "gap_pct": [0.44, 1.22, 1.54, 1.53]
+    "abs_diff_x100": [0.44, 1.22, 1.54, 1.53],
+    "relative_gap_pct": [2.4, 6.5, 9.3, 10.7]
   },
 
   "ledger": {
