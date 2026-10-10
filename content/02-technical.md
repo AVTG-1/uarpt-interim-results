@@ -199,7 +199,7 @@ cleanly. CIFAR RPPP analysis therefore uses ep300 throughout; the ep400 cell is
 <a id="diagnostic-protocol"></a>
 ## 3. The diagnostic protocol
 
-See `04-methods.md` for the full specification. Summary:
+See [the position-readout protocol](#token-level-position-readout-r2) for the full specification. Summary:
 
 **Token-level position readout R².** Extract per-patch encoder output tokens — **not**
 globally pooled — for ~2,000 images. Ridge regression from token embedding to that
@@ -246,11 +246,13 @@ reaching ~0.000.
 
 **CIFAR-10**
 
-| Epoch | rppp R² | rppp RankMe | rppp token norm | vanilla R² / RankMe |
-|---|---|---|---|---|
-| 30 (pre-aux) | 0.991 | 117 | 19.7 | 0.989 / 119 |
-| 66 | 0.9999 | 9.2 | 28.7 | 0.981 / 208 |
-| 300 | **1.0000** | **5.9** | 39.5 | 0.889 / 334 |
+| rppp epoch | rppp R² | rppp RankMe | rppp token norm | vanilla epoch | vanilla R² / RankMe |
+|---|---|---|---|---|---|
+| 30 (pre-aux) | 0.991 | 117 | 19.7 | 30 | 0.989 / 119 |
+| 66 | 0.9999 | 9.2 | 28.7 | 66 | 0.981 / 208 |
+| 300 | **1.0000** | **5.9** | 39.5 | 400 | 0.889 / 334 |
+
+rppp's last CIFAR-10 milestone is ep300 because its ep400 checkpoint is corrupt (§2.4). Vanilla's last is ep400, so the final row compares rppp at ep300 with vanilla at ep400.
 
 **STL-10**
 
@@ -286,8 +288,10 @@ the same vector); cross-dataset STL→CIFAR LP 32.81%.
 
 ### 4.4 The attempted fix `[MEASURED]`
 
-`rppp_nopos` — strip the positional embedding before the head. Final LP **28.48%**, a
-2–4 pp recovery. Not a fix.
+`rppp_nopos` — strip the positional embedding before the head. Final LP **28.48%**.
+Against CIFAR-10 rppp's ep300 value (23.42%) that is +5.06 pp. Against STL-10 rppp's ep400
+value (29.45%) it is −0.97 pp. The direction therefore depends on which comparator is used,
+and the dataset of the `rppp_nopos` run is not stated in the source. Not a fix.
 
 **Why it was incomplete by construction:** subtracting the input positional embedding
 from output tokens removes the residual-stream copy but not the positional information
@@ -543,16 +547,18 @@ over-regularisation: a model regularised into oblivion has a rising or flat loss
 Measured on `van_baseline`, CIFAR-10, same masking collator and reduction as `train.py`,
 fixed mask seed across epochs, held-out test split:
 
-| Epoch | Train | Held-out | Gap |
-|---|---|---|---|
-| 100 | 0.1811 | 0.1855 | 0.44% |
-| 200 | 0.1887 | 0.2009 | 1.22% |
-| 300 | 0.1672 | 0.1827 | 1.54% |
-| 400 | 0.1429 | 0.1582 | 1.53% |
+| Epoch | Train | Held-out | Absolute difference (×100) | Relative gap |
+|---|---|---|---|---|
+| 100 | 0.1811 | 0.1855 | 0.44 | 2.4% |
+| 200 | 0.1887 | 0.2009 | 1.22 | 6.5% |
+| 300 | 0.1672 | 0.1827 | 1.54 | 9.3% |
+| 400 | 0.1429 | 0.1582 | 1.53 | 10.7% |
 
-Both fall monotonically. The gap **widens to ep300 then plateaus** — not "stays
-constant," as an intermediate document stated. A 1.5% generalisation gap after 400 epochs
-on 50k images is tight.
+The relative gap is the held-out minus the train loss, as a share of the train loss. Both
+losses are higher at ep200 than at ep100, then fall monotonically from ep200 to ep400, the
+decline window. The absolute gap **widens to ep300 then plateaus** near 0.015 — not "stays
+constant," as an intermediate document stated — while the relative gap grows from 2.4% to
+10.7%. Held-out loss keeps falling through the decline window, so memorisation is ruled out.
 
 Note: these absolute values sit ~13% below the logged training values at every epoch. The
 most likely cause is that training-time loss is computed on randomly-augmented crops
@@ -658,45 +664,9 @@ post-peak small-data regime,"** not "RankMe is wrong."
 <a id="evaluation-stack"></a>
 ## 9. Evaluation stack audit
 
-### 9.1 CKA is correctly implemented `[CODE]`
+The CKA and k-NN audits sit with their protocols, in [CKA](#cka) and [k-NN protocol](#k-nn-protocol). The random-initialisation floor is recorded here.
 
-`eval/cka_analysis.py` lines 77–78 implement `_center()` per column before computing
-alignment, matching Kornblith et al. 2019. A concern raised during review arose from a
-planning document omitting the centering step in its *written formula*; the code is
-correct. Existing CKA matrices stand. `CKA(RP, Vanilla) = 0.096` is valid.
-
-### 9.2 The k-NN protocol is sound `[CODE + MEASURED]`
-
-Cosine on L2-normalised vectors (min-clamp 1e-8), k ∈ {5, 10, 20} default 20,
-similarity-weighted via `scatter_add_`. Three independent metric choices agree within
-1 pp:
-
-| Config | Cosine-weighted | Cosine-unweighted | Euclidean | LP−kNN gap |
-|---|---|---|---|---|
-| CIFAR vanilla ep400 | 56.68 | 56.27 | 56.87 | +8.25 pp |
-| CIFAR rp ep400 | 55.13 | 55.15 | 55.43 | **+15.64 pp** |
-| STL vanilla ep400 | 64.78 | 64.42 | 64.36 | +8.92 pp |
-| STL rp ep400 | 57.88 | 58.08 | 58.36 | **+21.46 pp** |
-
-The gap is a property of the features, not the protocol.
-
-**Centered and whitened variants** (`stage0d/knn_centered.csv`):
-
-| Dataset | Arm | Gap (original → centered) | μ ratio `‖μ‖/mean‖z‖` |
-|---|---|---|---|
-| CIFAR | vanilla | 8.25 → 7.60 | 0.630 |
-| CIFAR | rp | 15.64 → 16.09 | 0.698 |
-| CIFAR | rppp | −3.64 → −6.01 | **1.0000** |
-| STL | vanilla | 9.47 → 8.82 | 0.622 |
-| STL | rp | 17.02 → 17.47 | 0.695 |
-| STL | rppp | 0.31 → −1.15 | **1.0000** |
-
-Centering closes only ~11% of vanilla's gap. It makes RP's gap slightly *worse*, so RP's
-distortion is not a shared-offset phenomenon. The residual gap is consistent with the
-DMT-JEPA argument that I-JEPA has comparatively weak *local* semantics. Reference:
-VICReg/ResNet-18 reports k-NN *above* LP on CIFAR-10 and near-parity on STL-10.
-
-### 9.3 Random-initialisation floor `[MEASURED]`
+### 9.1 Random-initialisation floor `[MEASURED]`
 
 `stage0d/random_init_baseline.csv`
 
@@ -744,14 +714,14 @@ essentially no decline. Failure mode 3 is real in two of three and not universal
 | Moderate EMA caps improve ep400 | +1.4 to +1.5 pp | at baseline mean (66.3–66.5 vs 66.52) | dead |
 | Flat weight decay halves the decline | +2.0 pp | inside noise | dead |
 | Curriculum masking, leak-fixed | −5.4 pp | outside noise | worse |
-| RPPP shortcut fix recovers the head | +2 to +4 pp | still collapsed | failed |
-| EMA fixed at 0.999 from ep0 | +9.66 pp | 3.0σ at peak | survives, n = 1 |
+| RPPP shortcut fix recovers the head | 28.48% final LP (+5.06 pp or −0.97 pp, by comparator) | still collapsed | failed |
+| EMA fixed at 0.999 from ep0 | +9.19 pp | 3.0σ at peak | survives, n = 1 |
 
 ### 10.4 The RotNet control `[MEASURED]`
 
 RotNet-only — rotation prediction head, no JEPA loss, same encoder, schedule and budget.
-Three seeds: **61.95 ± 0.56%** against I-JEPA+RP's 70.77%. An 8.82 pp gap at 15× the seed
-standard deviation.
+Three seeds: **61.95 ± 0.56%** against I-JEPA+RP's 70.77%. An 8.82 pp gap, 15× RotNet's own
+three-seed standard deviation; the 70.77 comparator is n = 1 from the fixed-seed sweep (§10.5).
 
 This retires the objection that "I-JEPA + RP" is RotNet with a JEPA regulariser attached.
 The JEPA objective does the work.
@@ -774,7 +744,9 @@ ramping 0.996 → 1.0.
 |---|---|---|---|---|---|---|---|---|---|
 | LP | 58.44 | 67.45 | 73.57 | 77.10 | **78.16** | 77.16 | 76.55 | 75.64 | 75.16 |
 
-Against the three-seed baseline distribution: **3.0σ at peak, 4.7σ at ep400.**
+Against the three-seed baseline means: **+9.19 pp at peak (78.16 against 68.97, 3.0σ)** and
+**+8.64 pp at ep400 (75.16 against 66.52, 4.7σ)**. n = 1, unreplicated. (+9.66 pp against seed
+0 alone.)
 
 Every other EMA variant tested clusters at 66.3–66.5% at ep400. `van_emacap` (cap 0.9995)
 showed a 4.04 pp decline — *worse* than baseline — because the cap only binds at ep308,

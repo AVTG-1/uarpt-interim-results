@@ -436,20 +436,36 @@
       var s = P[state.ds];
       var name = state.ds === 'cifar' ? 'CIFAR-10' : 'STL-10';
       var cats = s.epochs.map(epoch);
-      var m = { t: 40, r: 84, b: 40, l: 64 }, H = 340;
+      // vanilla can sit at a different milestone from rppp: on CIFAR-10 rppp's ep400 checkpoint is corrupt,
+      // so its last point is ep300 while vanilla's last is ep400.
+      var vEp = s.vanilla_epochs || s.epochs;
+      var vLpEp = s.vanilla_lp_epochs || vEp;
+      var tickLabel = {};
+      cats.forEach(function (c, i) {
+        tickLabel[c] = vEp[i] === s.epochs[i] ? c : 'rppp ' + c + '\nvanilla ' + epoch(vEp[i]);
+      });
+      var m = { t: 40, r: 84, b: 58, l: 64 }, H = 358;
       var pw = W - m.l - m.r, ph = H - m.t - m.b;
-      var svg = svgIn(box, W, H, 'Grouped bars of token-level effective rank for vanilla and rppp at ' + cats.join(', ') + ' on ' + name + '. The two are identical before epoch 40 and far apart after it.');
+      var svg = svgIn(box, W, H, 'Grouped bars of token-level effective rank for vanilla and rppp at ' + cats.join(', ') + ' (rppp) on ' + name + '; vanilla is shown at ' + vEp.map(epoch).join(', ') + '. The two are identical before epoch 40 and far apart after it.');
       var g = svg.append('g').attr('transform', 'translate(' + m.l + ',' + m.t + ')');
       var x0 = d3.scaleBand().domain(cats).range([0, pw]).paddingInner(0.38).paddingOuter(0.3);
       var barW = Math.min(24, x0.bandwidth() / 2 - 2);
       var y = d3.scaleLinear().domain([0, 400]).range([ph, 0]);
       yAxis(g, y, pw, [0, 100, 200, 300, 400]);
       text(g, -m.l + 4, -22, 'Token effective rank (of 384)', { cls: 'axis-title' });
-      xAxis(g, x0, ph, cats).select('.domain').style('stroke', C.border);
+      var xa = xAxis(g, x0, ph, cats);
+      xa.select('.domain').style('stroke', C.border);
+      xa.selectAll('.tick text').each(function (d) {
+        var parts = tickLabel[d].split('\n');
+        if (parts.length < 2) return;
+        var t = d3.select(this);
+        t.text(null);
+        parts.forEach(function (part, k) { t.append('tspan').attr('x', 0).attr('dy', k ? '1.25em' : '0.71em').text(part); });
+      });
 
       var series = [
-        { id: 'vanilla', label: 'vanilla', colour: C.accent, rank: s.vanilla_rank, r2: s.vanilla_r2, lp: s.vanilla_lp, norm: null, dx: -barW / 2 - 1 },
-        { id: 'rppp', label: 'rppp', colour: C.refuted, rank: s.rppp_rank, r2: s.rppp_r2, lp: s.rppp_lp, norm: s.rppp_token_norm, dx: barW / 2 + 1 }
+        { id: 'vanilla', label: 'vanilla', colour: C.accent, rank: s.vanilla_rank, r2: s.vanilla_r2, lp: s.vanilla_lp, lpEp: vLpEp, eps: vEp, norm: null, dx: -barW / 2 - 1 },
+        { id: 'rppp', label: 'rppp', colour: C.refuted, rank: s.rppp_rank, r2: s.rppp_r2, lp: s.rppp_lp, lpEp: s.epochs, eps: s.epochs, norm: s.rppp_token_norm, dx: barW / 2 + 1 }
       ];
       series.forEach(function (se) {
         cats.forEach(function (c, i) {
@@ -465,9 +481,9 @@
           var hit = g.append('rect').attr('class', 'hit').attr('tabindex', 0)
             .attr('x', bx - 3).attr('y', 0).attr('width', barW + 6).attr('height', ph);
           var rows = [{ key: se.colour, val: rank(v), name: 'token effective rank' }, { val: r2(se.r2[i]), name: 'position readout R²' }];
-          if (se.lp && se.lp[i] != null) rows.push({ val: lp(se.lp[i]), name: 'linear probe, %' });
+          if (se.lp && se.lp[i] != null) rows.push({ val: lp(se.lp[i]), name: 'linear probe, %' + (se.lpEp[i] !== se.eps[i] ? ' (' + epoch(se.lpEp[i]) + ')' : '') });
           if (se.norm) rows.push({ val: norm(se.norm[i]), name: 'mean token norm' });
-          var spec = { title: se.label + ' · ' + name + ' · ' + c, rows: rows };
+          var spec = { title: se.label + ' · ' + name + ' · ' + epoch(se.eps[i]), rows: rows };
           hit.attr('aria-label', spec.title + ': ' + rows.map(function (q) { return q.name + ' ' + q.val; }).join(', '));
           bindTip(hit.node(), function () { return spec; });
           hit.on('pointerenter.lift focus.lift', function () { bar.attr('opacity', 0.82); });
@@ -496,14 +512,15 @@
       var cap = fig.querySelector('[data-cap-ds]');
       if (cap) cap.textContent = id === 'cifar' ? 'CIFAR-10' : 'STL-10';
       var note = fig.querySelector('[data-cap-last]');
-      if (note) note.textContent = id === 'cifar' ? 'ep300' : 'ep400';
+      if (note) note.textContent = id === 'cifar' ? 'vanilla at ep400 against rppp at ep300, because rppp’s ep400 checkpoint is corrupt' : 'ep400 for both';
     });
 
     var rows = [];
     ['cifar', 'stl'].forEach(function (k) {
       var s = P[k], n = k === 'cifar' ? 'CIFAR-10' : 'STL-10';
       s.epochs.forEach(function (e, i) {
-        rows.push([n + ' ' + epoch(e), rank(s.vanilla_rank[i]), rank(s.rppp_rank[i]), r2(s.vanilla_r2[i]), r2(s.rppp_r2[i]),
+        var ve = (s.vanilla_epochs || s.epochs)[i];
+        rows.push([n + ' ' + (ve === e ? epoch(e) : 'rppp ' + epoch(e) + ', vanilla ' + epoch(ve)), rank(s.vanilla_rank[i]), rank(s.rppp_rank[i]), r2(s.vanilla_r2[i]), r2(s.rppp_r2[i]),
           s.rppp_lp ? lp(s.rppp_lp[i]) : '—']);
       });
     });
@@ -843,8 +860,8 @@
           if (e === 400) rows.push({ val: lp(s.ep400), name: 'baseline seed ' + s.seed + ', epoch 400' });
         });
         var lines = ['Shaded band: three baseline seeds at peak, ' + fx(SV.peak_mean, 2) + ' \u00b1 ' + fx(SV.peak_std, 2) + '.'];
-        if (e === EM.peak_epoch) lines.push(fx(EM.sigma_at_peak, 1) + 'σ at peak against the three-seed baseline distribution.');
-        if (e === 400) lines.push(fx(EM.sigma_at_ep400, 1) + 'σ at epoch 400 against the three-seed baseline distribution.');
+        if (e === EM.peak_epoch) lines.push(signed(EM.delta_pp_vs_three_seed_mean.peak, 2) + ' pp against the three-seed baseline mean (' + fx(SV.peak_mean, 2) + '), ' + fx(EM.sigma_at_peak, 1) + 'σ.');
+        if (e === 400) lines.push(signed(EM.delta_pp_vs_three_seed_mean.ep400, 2) + ' pp against the three-seed baseline mean (' + fx(SV.ep400_mean, 2) + '), ' + fx(EM.sigma_at_ep400, 1) + 'σ.');
         return { title: 'Epoch ' + e, rows: rows, lines: lines, caveat: 'EMA run: ' + EM.replication_status + '.' };
       }
       var hit = g.append('rect').attr('class', 'hit').attr('width', pw).attr('height', ph).attr('tabindex', 0)

@@ -27,7 +27,7 @@ appendix exists for anyone who then wants proof.
 ## Status of the findings
 
 Four failure modes are established by measurement with passing controls. One positive
-result — a change to the EMA momentum schedule worth +9.66 pp — is **n = 1 and
+result — a change to the EMA momentum schedule worth +9.19 pp against the three-seed baseline mean — is **n = 1 and
 unreplicated**, and is labelled as such everywhere it appears.
 
 Several claims made during the project were later contradicted by better measurement.
@@ -60,7 +60,7 @@ content/
   02-technical.md             source for technical.html
   03-experiment-log.md        every run, config, result, validity status
   04-methods.md               measurement protocols and their controls
-  05-chronology.md            the nine audit rounds
+  05-chronology.md            the ten audit rounds
   06-figure-data.json         numeric series for the visualisations
   07-withdrawn.md             refuted claims
   08-glossary.md              terms defined for a general reader
@@ -103,8 +103,8 @@ caveat has come loose from its number.
 
 Numbers in `06-figure-data.json` are exact as measured — do not round them, and keep every caveat
 (`n = 1, unreplicated`; `0.59σ, inside seed noise`) attached to the number it qualifies.
-A few `[DISPUTED]` and `[OPEN]` notes in the appendix are written in `tools/build_appendix.py` (the `NOTES`
-table) rather than in `content/`; remove them there once the source files agree.
+`[DISPUTED]` and `[OPEN]` notes in the appendix are paragraphs in the markdown itself that start with the
+marker (for example in `content/04-methods.md`); delete the paragraph once the sources agree.
 
 ---
 

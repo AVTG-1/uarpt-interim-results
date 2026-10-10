@@ -221,8 +221,8 @@ class Syn:
 
 
 class Group:
-    def __init__(self, id, title, intro_blocks=None, intro_html="", items=(), merge=None, custom=None):
-        self.id, self.title = id, title
+    def __init__(self, id, title, intro_blocks=None, intro_html="", items=(), merge=None, custom=None, intro_fkey=None):
+        self.id, self.title, self.intro_fkey = id, title, intro_fkey
         self.intro_blocks, self.intro_html = intro_blocks or [], intro_html
         self.items, self.merge, self.custom = list(items), merge, custom
 
@@ -251,7 +251,7 @@ ID_OVERRIDES = {
     ("02", "7.4"): "heldout-loss",
     ("02", "7.6"): "freeze-test",
     ("02", "8.1"): "labelfree-table",
-    ("02", "9.3"): "random-init-floor",
+    ("02", "9.1"): "random-init-floor",
     ("02", "10.2"): "seed-variance",
     ("02", "10.3"): "noise-floor-claims",
     ("02", "10.4"): "rotnet-control",
@@ -290,46 +290,9 @@ BACKLINKS = {
     "data-integrity": ("Summary on the main page", "index.html#turn"),
 }
 
-ROUNDS_NOTE = (
-    '<span class="mk disputed">DISPUTED</span> The introduction above refers to nine rounds of review. '
-    "The list below carries a heading for each of Round 0, 0b, 0c, 0d, 0e, 0f, 0g, 1a, 1b and 2. "
-    "Whether Round 0 counts toward the nine is not stated in the source."
-)
-
-NOTES = {
-    ("03", "Part 2"): (
-        '<span class="mk disputed">DISPUTED</span> The compute table below counts these as ~17 runs. That matches the number of '
-        "rows in the table above, but <code>van_wdflat</code> and <code>rotnet_only</code> each cover three runs. "
-        "The figure is reproduced as written."
-    ),
-    ("03", "Part 3"): (
-        '<span class="mk disputed">DISPUTED</span> The component lines above do not sum to the stated total. '
-        "The reconciliation is open and the figures are reproduced as written in the source."
-    ),
-    ("02", "4.2"): (
-        '<span class="mk disputed">DISPUTED</span> Vanilla CIFAR-10 values 0.889 / 334 are listed at epoch 300 in the table above and at '
-        "epoch 400 in the baseline signature on the main page. The source files do not agree on the milestone, and the values are "
-        "reproduced as given in each place. The authoritative record is <code>stage0/position_readout_tokens.csv</code>."
-    ),
-    ("02", "4.4"): (
-        '<span class="mk disputed">DISPUTED</span> The source states a 2–4 pp recovery for <code>rppp_nopos</code> but does not name '
-        "the comparison point (dataset and epoch of the unmodified rppp run). The final LP of 28.48% is reproduced as recorded."
-    ),
-    ("02", "10.3"): (
-        'The EMA row above is qualified in the note at the end of {ref:02:11}. '
-        '<span class="mk open">OPEN</span> n = 1, unreplicated.'
-    ),
-    ("02", "10.4"): (
-        '<span class="mk disputed">DISPUTED</span> The 70.77% comparator is a single run (n = 1; the original sweep used one fixed seed, '
-        "see {ref:02:10.5}), whereas ± 0.56 is RotNet's own three-seed spread. The source does not state which standard deviation "
-        "the 15× refers to."
-    ),
-    ("02", "11"): (
-        '<span class="mk disputed">DISPUTED</span> The +9.66 pp headline is the difference between 78.16 and vanilla seed 0\'s 68.50 '
-        "(n = 1, unreplicated). The 3.0σ at peak and 4.7σ at ep400 are stated against the three-seed baseline distribution; "
-        "the source does not state which reference mean each σ is measured from."
-    ),
-}
+# Editorial notes injected after a section body: (file, key) -> HTML. Resolved discrepancies are fixed in content/
+# instead; open ones belong in the markdown itself as a paragraph that starts with `[DISPUTED]` or `[OPEN]`.
+NOTES = {}
 
 STL_NOTE = (
     '<span class="mk open">OPEN</span> Blank cells are missing in the source and are never interpolated. '
@@ -340,7 +303,7 @@ GROUPS = [
     Group("configuration", "Codebase and configuration", merge=("02", "1")),
     Group(
         "methods", "Measurement protocols and their controls",
-        intro_blocks=pre_blocks("04", skip=1),
+        intro_blocks=pre_blocks("04", skip=1), intro_fkey="04",
         items=[Place("02", "3", backlink=True)] + [Place("04", n.key) for n in FILES["04"]["top"]] + [Place("02", "9")],
     ),
     Group(
@@ -380,8 +343,8 @@ GROUPS = [
             Place("02", "14"),
         ],
     ),
-    Group("chronology", "Audit chronology", intro_blocks=pre_blocks("05"), intro_html=f'<div class="note">{ROUNDS_NOTE}</div>', items=all_top("05")),
-    Group("withdrawn", "Withdrawn results and why", intro_blocks=pre_blocks("07", drop_last=1), items=all_top("07")),
+    Group("chronology", "Audit chronology", intro_blocks=pre_blocks("05"), intro_fkey="05",  items=all_top("05")),
+    Group("withdrawn", "Withdrawn results and why", intro_blocks=pre_blocks("07", drop_last=1), intro_fkey="07", items=all_top("07")),
     Group("artifacts", "Artifact index", merge=("02", "12")),
     Group("glossary", "Glossary", custom="glossary"),
 ]
@@ -504,11 +467,10 @@ def preprocess(text, fkey):
         num, pid = XREF[(f, k)]
         return f"[{label or '§' + num}](#{pid})"
 
-    text = text.replace("+9.66 pp at peak, 3.0σ. **n = 1.**", "+9.66 pp at peak, 3.0σ. **n = 1, unreplicated.**")
     text = text.replace("mechanism in §3.", "mechanism in §4.")  # source cross-reference points at the wrong section
     text = re.sub(r"`04-methods\.md` §(\d+)", lambda m: to_md("04", m.group(1)), text)
-    text = text.replace("`04-methods.md`", "[the measurement protocols](#methods)")
-    text = text.replace("`07-withdrawn.md`", "[the withdrawn results](#withdrawn)")
+    text = text.replace("`04-methods.md`", f"[§{IDREF['methods']}, the measurement protocols](#methods)")
+    text = text.replace("`07-withdrawn.md`", f"[§{IDREF['withdrawn']}, the withdrawn results](#withdrawn)")
     text = re.sub(r"appendix §(\d+(?:\.\d+)?)", r"§\1", text)
     if fkey in ("02", "03"):
         text = re.sub(r"(?<![\w/\[])§(\d+(?:\.\d+)?)", lambda m: to_md("02", m.group(1)), text)
@@ -580,7 +542,7 @@ def attach_caveats(rows):
         r = list(r)
         if "+2.27 pp" in joined:
             r = [c + ", inside seed noise" if c.strip() == "0.59σ" else c for c in r]
-        if "+9.66 pp" in joined:
+        if "+9.19 pp" in joined:
             r = [c + ", unreplicated" if re.search(r"n = 1$", c.strip()) else c for c in r]
         out.append(r)
     return out
@@ -609,7 +571,10 @@ def render_blocks(blocks, fkey):
     for b in blocks:
         t = b["t"]
         if t == "p":
-            out.append(f"<p>{inline(b['text'], fkey)}</p>")
+            if re.match(r"^`\[(DISPUTED|OPEN)\]`", b["text"]):
+                out.append(f'<div class="note">{inline(b["text"], fkey)}</div>')
+            else:
+                out.append(f"<p>{inline(b['text'], fkey)}</p>")
         elif t == "quote":
             paras = [p for p in b["text"].split("\n\n")] if "\n\n" in b["text"] else [b["text"]]
             out.append("<blockquote>" + "".join(f"<p>{inline(p, fkey)}</p>" for p in paras) + "</blockquote>")
@@ -645,7 +610,7 @@ def render_placed(p, level=None):
             parts.append(f'<p class="backlink"><a href="{BACKLINKS[p.id][1]}">{esc(BACKLINKS[p.id][0])}</a></p>')
         g = p.intro
         if g and g.intro_blocks:
-            parts.append(render_blocks(g.intro_blocks, None))
+            parts.append(render_blocks(g.intro_blocks, g.intro_fkey))
         if g and g.intro_html:
             parts.append(resolve_refs(g.intro_html))
     else:

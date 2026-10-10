@@ -8,8 +8,10 @@ Checks
   2. every anchor the main page links to exists, and "§N" labels match the appendix numbering
   3. the glossary exists and every glossary term in content/08-glossary.md is anchored
   4. every number on both pages appears somewhere in content/ (nothing recomputed or invented)
-  5. the two caveat rules: +9.66 pp with "n = 1, unreplicated"; +2.27 pp with "0.59σ, inside seed noise"
-  6. house rules: attribution, no emoji, no exclamation marks, no banned words, no institution names
+  5. the caveat rules: +9.19 pp with "n = 1, unreplicated" (and +9.66 pp only once, in the EMA section);
+     +2.27 pp with "0.59σ, inside seed noise"
+  6. house rules: attribution, no emoji, no exclamation marks, no banned words, no institution names,
+     no content/*.md filename in rendered text
   7. the pages do not fetch the data file or any CSV
 Exit status 1 if anything fails.
 """
@@ -240,17 +242,18 @@ def check_caveat(parser, label, needle, must):
 
 parser_src = {"index.html": INDEX, "technical.html": TECH}
 for name, parser in (("index.html", PI), ("technical.html", PT)):
-    leaf = [t for tag, cls, t in parser.blocks if "+9.66" in t and tag in ("p", "li", "dd", "figcaption", "blockquote")]
-    bad = [t.strip()[:70] for t in leaf if not ("n = 1" in t and "unreplicated" in t)]
-    # stat card: the card (div.stat) must hold the caveat chip
-    for tag, cls, t in parser.blocks:
-        if tag == "div" and cls.strip() == "stat" and "+9.66" in t and not ("n = 1" in t and "unreplicated" in t):
-            bad.append("stat card")
-    for row in re.findall(r"<tr>.*?</tr>", parser_src[name], re.S):
-        txt = html.unescape(re.sub(r"<[^>]+>", " ", row))
-        if "+9.66" in txt and not ("n = 1" in txt and "unreplicated" in txt):
-            bad.append("row")
-    report(not bad, f"{name}: every +9.66 pp carries 'n = 1, unreplicated'", "; ".join(bad))
+    for needle in ("+9.19", "+9.66"):
+        leaf = [t for tag, cls, t in parser.blocks if needle in t and tag in ("p", "li", "dd", "figcaption", "blockquote")]
+        bad = [t.strip()[:70] for t in leaf if not ("n = 1" in t and "unreplicated" in t)]
+        # stat card: the card (div.stat) must hold the caveat chip
+        for tag, cls, t in parser.blocks:
+            if tag == "div" and cls.strip() == "stat" and needle in t and not ("n = 1" in t and "unreplicated" in t):
+                bad.append("stat card")
+        for row in re.findall(r"<tr>.*?</tr>", parser_src[name], re.S):
+            txt = html.unescape(re.sub(r"<[^>]+>", " ", row))
+            if needle in txt and not ("n = 1" in txt and "unreplicated" in txt):
+                bad.append("row")
+        report(not bad, f"{name}: every {needle} pp carries 'n = 1, unreplicated'", "; ".join(bad))
 
     bad = []
     for row in re.findall(r"<tr>.*?</tr>", parser_src[name], re.S):
@@ -261,6 +264,12 @@ for name, parser in (("index.html", PI), ("technical.html", PT)):
         if tag in ("p", "li", "dd", "figcaption") and "+2.27" in t and not ("0.59σ" in t and "inside seed noise" in t):
             bad.append(t.strip()[:70])
     report(not bad, f"{name}: every +2.27 pp carries '0.59σ, inside seed noise'", "; ".join(bad))
+
+# +9.66 pp (against seed 0 alone) is allowed exactly once across both pages, inside the EMA section
+count = (" ".join(PI.all_text) + " " + " ".join(PT.all_text)).count("+9.66")
+ema = re.search(r'<h2[^>]*id="ema-result"|<h3 id="ema-result".*?(?=<h3 id=|<section class="group")', TECH, re.S)
+in_ema = ema is not None and ema.group(0).count("+9.66") == 1
+report(count == 1 and in_ema, "+9.66 pp appears exactly once across both pages, in the EMA result section", f"found {count}")
 
 # charts.js builds the V2 tooltip for rp from the JSON reason plus an explicit caveat
 js = (ROOT / "assets" / "charts.js").read_text(encoding="utf-8")
@@ -280,6 +289,8 @@ for name, vis in (("index.html", vis_index), ("technical.html", vis_tech)):
     inst = re.findall(r"\b(university|institute|laborator\w*|lab|supervisor|professor|department|faculty)\b", vis, re.I)
     report(not inst, f"{name}: no institution, lab or supervisor names", ", ".join(inst))
     report("A project by Aryan Verma" in vis, f"{name}: attribution 'A project by Aryan Verma' present")
+    leaked = [n for n in CONTENT if n.endswith(".md") and n in vis]
+    report(not leaked, f"{name}: no content/*.md filename in rendered text", ", ".join(leaked))
 js_all = (ROOT / "assets" / "charts.js").read_text() + (ROOT / "assets" / "main.js").read_text()
 report("!" not in re.sub(r"!==|!=|!\w|\(!|!!|\)!|![\s)]", "", re.sub(r"//.*|/\*.*?\*/", "", js_all, flags=re.S)) or True,
        "script strings contain no exclamation marks (operators ignored)")

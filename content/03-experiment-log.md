@@ -102,9 +102,9 @@ shift. And these are ep400 numbers, which appendix §7 shows is a degraded endpo
 | | |
 |---|---|
 | Original sweep | 14 runs, ~300 GPU-hours |
-| Diagnostic and repair runs | ~17 runs, ~144 GPU-hours |
+| Diagnostic and repair runs | ~21 runs (17 configs; van_wdflat and rotnet_only are three seeds each), ~144 GPU-hours |
 | Audit analysis (no training) | ~20 GPU-hours |
-| **Total** | **~444 GPU-hours** |
+| **Total** | **~464 GPU-hours** |
 
 Timing notes: auxiliary runs ran at ~105 ms/iter against vanilla's ~71 ms (+48%);
 multitask and mtuc at 2083 iters/epoch against 1563 (+33%). At ep400 the auxiliary runs
